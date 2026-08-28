@@ -1,13 +1,6 @@
 import type { Machine } from "@/lib/machines";
 
-const activeStatuses = new Set([
-  "filling",
-  "washing",
-  "rinsing",
-  "spinning",
-  "drying",
-  "cooling",
-]);
+const activeStatuses = new Set(["filling", "washing", "rinsing", "spinning", "drying", "cooling"]);
 
 export function WashingAnim({ machine }: { machine: Machine }) {
   const running = activeStatuses.has(machine.status);
@@ -40,7 +33,14 @@ export function WashingAnim({ machine }: { machine: Machine }) {
       <rect x="34" y="34" width="132" height="18" rx="6" fill="rgba(255,255,255,0.08)" />
       <circle cx="52" cy="43" r="4" fill="#479fdf" />
       <circle cx="68" cy="43" r="4" fill="#7c5cbf" />
-      <circle cx="100" cy="110" r="60" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.2)" strokeWidth="2" />
+      <circle
+        cx="100"
+        cy="110"
+        r="60"
+        fill="rgba(0,0,0,0.35)"
+        stroke="rgba(255,255,255,0.2)"
+        strokeWidth="2"
+      />
       <g className="drum">
         <circle cx="100" cy="110" r="52" fill="url(#drum)" />
         <circle cx="100" cy="72" r="6" fill="rgba(255,255,255,0.85)" />

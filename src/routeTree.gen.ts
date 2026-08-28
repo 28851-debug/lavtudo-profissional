@@ -13,6 +13,11 @@ import { Route as ScanRouteImport } from './routes/scan'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as MachineIdRouteImport } from './routes/$machineId'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiWashesRouteImport } from './routes/api/washes'
+import { Route as ApiSessionRouteImport } from './routes/api/session'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AcompanharWashIdRouteImport } from './routes/acompanhar/$washId'
+import { Route as ApiWashesWashIdRouteImport } from './routes/api/washes/$washId'
 
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
@@ -34,18 +39,53 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWashesRoute = ApiWashesRouteImport.update({
+  id: '/api/washes',
+  path: '/api/washes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSessionRoute = ApiSessionRouteImport.update({
+  id: '/api/session',
+  path: '/api/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcompanharWashIdRoute = AcompanharWashIdRouteImport.update({
+  id: '/acompanhar/$washId',
+  path: '/acompanhar/$washId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWashesWashIdRoute = ApiWashesWashIdRouteImport.update({
+  id: '/$washId',
+  path: '/$washId',
+  getParentRoute: () => ApiWashesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$machineId': typeof MachineIdRoute
   '/admin': typeof AdminRoute
   '/scan': typeof ScanRoute
+  '/acompanhar/$washId': typeof AcompanharWashIdRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/session': typeof ApiSessionRoute
+  '/api/washes': typeof ApiWashesRouteWithChildren
+  '/api/washes/$washId': typeof ApiWashesWashIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$machineId': typeof MachineIdRoute
   '/admin': typeof AdminRoute
   '/scan': typeof ScanRoute
+  '/acompanhar/$washId': typeof AcompanharWashIdRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/session': typeof ApiSessionRoute
+  '/api/washes': typeof ApiWashesRouteWithChildren
+  '/api/washes/$washId': typeof ApiWashesWashIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +93,46 @@ export interface FileRoutesById {
   '/$machineId': typeof MachineIdRoute
   '/admin': typeof AdminRoute
   '/scan': typeof ScanRoute
+  '/acompanhar/$washId': typeof AcompanharWashIdRoute
+  '/api/health': typeof ApiHealthRoute
+  '/api/session': typeof ApiSessionRoute
+  '/api/washes': typeof ApiWashesRouteWithChildren
+  '/api/washes/$washId': typeof ApiWashesWashIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/$machineId' | '/admin' | '/scan'
+  fullPaths:
+    | '/'
+    | '/$machineId'
+    | '/admin'
+    | '/scan'
+    | '/acompanhar/$washId'
+    | '/api/health'
+    | '/api/session'
+    | '/api/washes'
+    | '/api/washes/$washId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/$machineId' | '/admin' | '/scan'
-  id: '__root__' | '/' | '/$machineId' | '/admin' | '/scan'
+  to:
+    | '/'
+    | '/$machineId'
+    | '/admin'
+    | '/scan'
+    | '/acompanhar/$washId'
+    | '/api/health'
+    | '/api/session'
+    | '/api/washes'
+    | '/api/washes/$washId'
+  id:
+    | '__root__'
+    | '/'
+    | '/$machineId'
+    | '/admin'
+    | '/scan'
+    | '/acompanhar/$washId'
+    | '/api/health'
+    | '/api/session'
+    | '/api/washes'
+    | '/api/washes/$washId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +140,10 @@ export interface RootRouteChildren {
   MachineIdRoute: typeof MachineIdRoute
   AdminRoute: typeof AdminRoute
   ScanRoute: typeof ScanRoute
+  AcompanharWashIdRoute: typeof AcompanharWashIdRoute
+  ApiHealthRoute: typeof ApiHealthRoute
+  ApiSessionRoute: typeof ApiSessionRoute
+  ApiWashesRoute: typeof ApiWashesRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -99,15 +176,76 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/washes': {
+      id: '/api/washes'
+      path: '/api/washes'
+      fullPath: '/api/washes'
+      preLoaderRoute: typeof ApiWashesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/session': {
+      id: '/api/session'
+      path: '/api/session'
+      fullPath: '/api/session'
+      preLoaderRoute: typeof ApiSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acompanhar/$washId': {
+      id: '/acompanhar/$washId'
+      path: '/acompanhar/$washId'
+      fullPath: '/acompanhar/$washId'
+      preLoaderRoute: typeof AcompanharWashIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/washes/$washId': {
+      id: '/api/washes/$washId'
+      path: '/$washId'
+      fullPath: '/api/washes/$washId'
+      preLoaderRoute: typeof ApiWashesWashIdRouteImport
+      parentRoute: typeof ApiWashesRoute
+    }
   }
 }
+
+interface ApiWashesRouteChildren {
+  ApiWashesWashIdRoute: typeof ApiWashesWashIdRoute
+}
+
+const ApiWashesRouteChildren: ApiWashesRouteChildren = {
+  ApiWashesWashIdRoute: ApiWashesWashIdRoute,
+}
+
+const ApiWashesRouteWithChildren = ApiWashesRoute._addFileChildren(
+  ApiWashesRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MachineIdRoute: MachineIdRoute,
   AdminRoute: AdminRoute,
   ScanRoute: ScanRoute,
+  AcompanharWashIdRoute: AcompanharWashIdRoute,
+  ApiHealthRoute: ApiHealthRoute,
+  ApiSessionRoute: ApiSessionRoute,
+  ApiWashesRoute: ApiWashesRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

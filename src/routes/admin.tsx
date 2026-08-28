@@ -1,307 +1,444 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { LogOut, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  DatabaseZap,
+  History,
+  LogOut,
+  Plus,
+  QrCode,
+  RefreshCw,
+  WashingMachine,
+} from "lucide-react";
 import { Nav } from "@/components/Nav";
-import { useMachines } from "@/context/MachineContext";
-import { STATUS_LABEL, type MachineStatus } from "@/lib/machines";
+import { StaffGate } from "@/components/staff/StaffGate";
+import { StatusControls } from "@/components/staff/StatusControls";
+import { TrackingAccessCard } from "@/components/staff/TrackingAccessCard";
+import { DEFAULT_MACHINES } from "@/lib/machines";
+import {
+  STATUS_SHORT_LABEL,
+  formatWashDate,
+  type Wash,
+  type WashCreateInput,
+  type WashStatus,
+} from "@/lib/washes";
 import "@/styles/app.css";
-
-const AUTH_KEY = "lavtudo.admin.session";
-const ADMIN_USER = "admin";
-const ADMIN_PASS = "admin";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Painel admin — LavTudo" },
-      { name: "description", content: "Painel administrativo do LavTudo." },
-      { name: "robots", content: "noindex" },
+      { title: "Painel do funcionário — LavTudo" },
+      { name: "description", content: "Painel seguro de acompanhamento das lavagens LavTudo." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: AdminPage,
 });
 
 function AdminPage() {
-  const [authed, setAuthed] = useState(false);
-  const [checked, setChecked] = useState(false);
-
-  useEffect(() => {
-    setAuthed(sessionStorage.getItem(AUTH_KEY) === "1");
-    setChecked(true);
-  }, []);
-
   return (
     <div className="lav-shell">
       <Nav />
-      {!checked ? null : authed ? (
-        <AdminDashboard
-          onLogout={() => {
-            sessionStorage.removeItem(AUTH_KEY);
-            setAuthed(false);
-          }}
-        />
-      ) : (
-        <LoginForm
-          onOk={() => {
-            sessionStorage.setItem(AUTH_KEY, "1");
-            setAuthed(true);
-          }}
-        />
-      )}
+      <StaffGate>{(session) => <EmployeeDashboard onLogout={session.logout} />}</StaffGate>
     </div>
   );
 }
 
-function LoginForm({ onOk }: { onOk: () => void }) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [err, setErr] = useState("");
+function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
+  const [washes, setWashes] = useState<Wash[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedQrId, setSelectedQrId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-      setErr("");
-      onOk();
-    } else {
-      setErr("Usuário ou senha incorretos.");
+  const loadWashes = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await fetch("/api/washes", { cache: "no-store" });
+      const body = (await response.json()) as {
+        washes?: Wash[];
+        error?: string;
+      };
+      if (!response.ok || !body.washes) throw new Error(body.error || "Falha ao carregar.");
+      setWashes(body.washes);
+      setError(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível carregar as lavagens.");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadWashes();
+    const interval = window.setInterval(() => void loadWashes(true), 2500);
+    return () => window.clearInterval(interval);
+  }, [loadWashes]);
+
+  const mutateWash = async (id: string, body: { status: WashStatus } | { action: "reset" }) => {
+    setBusyId(id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/washes/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json()) as { wash?: Wash; error?: string };
+      if (!response.ok || !payload.wash) throw new Error(payload.error || "Falha ao atualizar.");
+      setWashes((current) =>
+        current
+          .map((wash) => (wash.id === id ? payload.wash! : wash))
+          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível atualizar o status.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const activeWashes = useMemo(
+    () => washes.filter((wash) => !["ready", "collected", "cancelled"].includes(wash.status)),
+    [washes],
+  );
+  const completedWashes = useMemo(
+    () => washes.filter((wash) => ["ready", "collected", "cancelled"].includes(wash.status)),
+    [washes],
+  );
+  const visibleWashes = showHistory ? completedWashes : activeWashes;
+
+  return (
+    <main className="container-page employee-page">
+      <header className="page-heading employee-heading">
+        <div>
+          <p className="eyebrow">Operação LavTudo</p>
+          <h1>Painel do funcionário</h1>
+          <p>Crie lavagens e atualize cada etapa em tempo real para o celular do cliente.</p>
+        </div>
+        <div className="heading-actions">
+          <button className="button ghost" type="button" onClick={() => void onLogout()}>
+            <LogOut size={17} />
+            Sair
+          </button>
+        </div>
+      </header>
+
+      <section className="dashboard-summary" aria-label="Resumo das lavagens">
+        <SummaryCard
+          label="Em acompanhamento"
+          value={activeWashes.length}
+          icon={<WashingMachine />}
+        />
+        <SummaryCard
+          label="Prontas ou encerradas"
+          value={completedWashes.length}
+          icon={<History />}
+        />
+        <SummaryCard label="Armazenamento" value="Supabase" icon={<DatabaseZap />} textual />
+      </section>
+
+      <section className="equipment-section" aria-labelledby="equipment-title">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Equipamentos</p>
+            <h2 id="equipment-title">Visão rápida das máquinas</h2>
+          </div>
+          <span>{DEFAULT_MACHINES.length} equipamentos</span>
+        </div>
+        <div className="equipment-grid">
+          {DEFAULT_MACHINES.map((machine) => {
+            const assignedWash = activeWashes.find((wash) => wash.machineLabel === machine.name);
+            return (
+              <article className="glass equipment-card" key={machine.id}>
+                <span className="equipment-icon" aria-hidden="true">
+                  <WashingMachine size={21} />
+                </span>
+                <div>
+                  <strong>{machine.name}</strong>
+                  <span>{machine.type === "washer" ? "Lavadora" : "Secadora"}</span>
+                </div>
+                <span className={`equipment-state ${assignedWash ? "busy" : "available"}`}>
+                  {assignedWash ? `Lavagem #${assignedWash.id}` : "Disponível"}
+                </span>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      {error && (
+        <div className="notice danger" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => void loadWashes()}>
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      <CreateWashCard
+        onCreated={(wash) => {
+          setWashes((current) => [wash, ...current]);
+          setSelectedQrId(wash.id);
+          setShowHistory(false);
+        }}
+      />
+
+      {selectedQrId && (
+        <section className="glass selected-access-card" aria-label="Acesso da nova lavagem">
+          <TrackingAccessCard washId={selectedQrId} />
+          <button className="close-text-button" type="button" onClick={() => setSelectedQrId(null)}>
+            Fechar
+          </button>
+        </section>
+      )}
+
+      <div className="list-toolbar">
+        <div className="segmented-control" aria-label="Filtrar lavagens">
+          <button
+            type="button"
+            className={!showHistory ? "active" : ""}
+            onClick={() => setShowHistory(false)}
+          >
+            Em andamento <span>{activeWashes.length}</span>
+          </button>
+          <button
+            type="button"
+            className={showHistory ? "active" : ""}
+            onClick={() => setShowHistory(true)}
+          >
+            Histórico <span>{completedWashes.length}</span>
+          </button>
+        </div>
+        <button className="button ghost small" type="button" onClick={() => void loadWashes()}>
+          <RefreshCw size={16} />
+          Atualizar
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="staff-wash-list" aria-label="Carregando lavagens">
+          <div className="glass skeleton-panel" />
+          <div className="glass skeleton-panel" />
+        </div>
+      ) : visibleWashes.length === 0 ? (
+        <section className="glass empty-state">
+          <WashingMachine size={36} aria-hidden="true" />
+          <h2>{showHistory ? "Nenhuma lavagem encerrada" : "Nenhuma lavagem ativa"}</h2>
+          <p>{showHistory ? "O histórico aparecerá aqui." : "Crie uma lavagem para começar."}</p>
+        </section>
+      ) : (
+        <div className="staff-wash-list">
+          {visibleWashes.map((wash) => (
+            <article className="glass staff-wash-card" key={wash.id}>
+              <div className="staff-wash-head">
+                <div>
+                  <p className="eyebrow">Lavagem #{wash.id}</p>
+                  <h2>{wash.customerName}</h2>
+                  <p>
+                    {wash.machineLabel} ·{" "}
+                    {wash.serviceType === "wash-dry" ? "Lavagem e secagem" : "Lavagem"}
+                  </p>
+                </div>
+                <span className={`status-chip status-${wash.status}`}>
+                  {STATUS_SHORT_LABEL[wash.status]}
+                </span>
+              </div>
+
+              <div className="wash-meta-row">
+                <span>Criada {formatWashDate(wash.createdAt, true)}</span>
+                <span>Atualizada {formatWashDate(wash.updatedAt)}</span>
+              </div>
+
+              {!showHistory && (
+                <StatusControls
+                  wash={wash}
+                  busy={busyId === wash.id}
+                  onStatus={(status) => void mutateWash(wash.id, { status })}
+                />
+              )}
+
+              <div className="staff-card-footer">
+                <button
+                  className="button secondary small"
+                  type="button"
+                  onClick={() =>
+                    setSelectedQrId((current) => (current === wash.id ? null : wash.id))
+                  }
+                >
+                  <QrCode size={16} />
+                  QR Code e NFC
+                </button>
+                {!showHistory && (
+                  <button
+                    className="button ghost small"
+                    type="button"
+                    onClick={() => void mutateWash(wash.id, { action: "reset" })}
+                    disabled={busyId === wash.id}
+                  >
+                    <RefreshCw size={16} />
+                    Resetar
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}
+
+function CreateWashCard({ onCreated }: { onCreated: (wash: Wash) => void }) {
+  const [form, setForm] = useState<WashCreateInput>({
+    customerName: "",
+    machineLabel: "Lavadora 01",
+    serviceType: "wash-dry",
+    estimatedMinutes: 45,
+  });
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/washes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(form),
+      });
+      const body = (await response.json()) as { wash?: Wash; error?: string };
+      if (!response.ok || !body.wash) throw new Error(body.error || "Falha ao criar lavagem.");
+      onCreated(body.wash);
+      setForm((current) => ({ ...current, customerName: "" }));
+      setOpen(false);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível criar a lavagem.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="login-wrap">
-      <motion.form
-        onSubmit={submit}
-        className="glass login-card"
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
+    <section className={`glass create-wash-card ${open ? "open" : ""}`}>
+      <button
+        className="create-wash-toggle"
+        type="button"
+        onClick={() => setOpen((value) => !value)}
       >
-        <h1>Entrar no admin</h1>
-        <p>Acesse o painel de gerenciamento das máquinas.</p>
-        <div className="admin-fields" style={{ marginTop: 6 }}>
-          <div className="field">
-            <label>Usuário</label>
+        <span className="create-wash-icon">
+          <Plus size={20} />
+        </span>
+        <span>
+          <strong>Nova lavagem</strong>
+          <small>Gere um identificador, QR Code e URL únicos</small>
+        </span>
+        <span aria-hidden="true">{open ? "−" : "+"}</span>
+      </button>
+
+      {open && (
+        <form className="create-wash-form" onSubmit={submit}>
+          <div className="form-field">
+            <label htmlFor="customer-name">Nome do cliente</label>
             <input
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              autoComplete="username"
+              id="customer-name"
+              value={form.customerName}
+              onChange={(event) => setForm({ ...form, customerName: event.target.value })}
+              placeholder="Ex.: Maria Silva"
+              minLength={2}
+              maxLength={80}
+              required
               autoFocus
             />
           </div>
-          <div className="field">
-            <label>Senha</label>
+          <div className="form-field">
+            <label htmlFor="machine-label">Equipamento</label>
+            <select
+              id="machine-label"
+              value={form.machineLabel}
+              onChange={(event) => setForm({ ...form, machineLabel: event.target.value })}
+              required
+            >
+              {DEFAULT_MACHINES.map((machine) => (
+                <option value={machine.name} key={machine.id}>
+                  {machine.name} — {machine.type === "washer" ? "Lavadora" : "Secadora"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor="service-type">Serviço</label>
+            <select
+              id="service-type"
+              value={form.serviceType}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  serviceType: event.target.value as WashCreateInput["serviceType"],
+                })
+              }
+            >
+              <option value="wash-dry">Lavagem e secagem</option>
+              <option value="wash">Somente lavagem</option>
+            </select>
+          </div>
+          <div className="form-field">
+            <label htmlFor="estimated-minutes">Previsão (minutos)</label>
             <input
-              type="password"
-              value={pass}
-              onChange={(e) => setPass(e.target.value)}
-              autoComplete="current-password"
+              id="estimated-minutes"
+              type="number"
+              min={5}
+              max={240}
+              value={form.estimatedMinutes}
+              onChange={(event) =>
+                setForm({ ...form, estimatedMinutes: Number(event.target.value) })
+              }
+              required
             />
           </div>
-        </div>
-        {err && (
-          <div className="scan-msg error" style={{ marginTop: 10 }}>
-            {err}
+          {error && (
+            <div className="notice danger form-notice" role="alert">
+              {error}
+            </div>
+          )}
+          <div className="form-actions">
+            <button className="button ghost" type="button" onClick={() => setOpen(false)}>
+              Cancelar
+            </button>
+            <button className="button primary" type="submit" disabled={submitting}>
+              <Plus size={17} />
+              {submitting ? "Criando…" : "Criar e gerar QR Code"}
+            </button>
           </div>
-        )}
-        <div style={{ marginTop: 14 }}>
-          <button className="btn-primary" type="submit">
-            Entrar
-          </button>
-        </div>
-        <div className="login-hint">
-          Acesso restrito ao administrador.
-        </div>
-      </motion.form>
-    </div>
+        </form>
+      )}
+    </section>
   );
 }
 
-const ALL_STATUSES: MachineStatus[] = [
-  "available",
-  "waiting",
-  "filling",
-  "washing",
-  "rinsing",
-  "spinning",
-  "drying",
-  "cooling",
-  "finished",
-  "paused",
-];
-
-function AdminDashboard({ onLogout }: { onLogout: () => void }) {
-  const { machines, updateMachine, action, resetAll } = useMachines();
-
-  return (
-    <div className="container-page">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: 10,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: "1.6rem", textShadow: "1px 1px 3px #000" }}>
-            Painel Administrativo
-          </h1>
-          <p style={{ color: "#d5ccff", fontSize: "0.9rem" }}>
-            Alterações refletem em tempo real nas páginas públicas das máquinas.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="chip-btn" onClick={resetAll} title="Restaurar padrões">
-            <RefreshCw size={14} style={{ marginRight: 6 }} />
-            Restaurar
-          </button>
-          <button className="chip-btn danger" onClick={onLogout}>
-            <LogOut size={14} style={{ marginRight: 6 }} />
-            Sair
-          </button>
-        </div>
-      </div>
-
-      <div className="admin-list">
-        {machines.map((m) => (
-          <motion.div
-            key={m.id}
-            className="glass admin-card"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="admin-card-head">
-              <div>
-                <div className="admin-card-title">{m.name}</div>
-                <div style={{ color: "#d5ccff", fontSize: "0.8rem" }}>
-                  /{m.id} • {m.type === "washer" ? "Lavadora" : "Secadora"}
-                </div>
-              </div>
-              <div className="admin-actions">
-                <button className="chip-btn primary" onClick={() => action(m.id, "start")}>
-                  Iniciar
-                </button>
-                <button className="chip-btn warn" onClick={() => action(m.id, "pause")}>
-                  Pausar
-                </button>
-                <button className="chip-btn" onClick={() => action(m.id, "resume")}>
-                  Retomar
-                </button>
-                <button className="chip-btn" onClick={() => action(m.id, "finish")}>
-                  Finalizar
-                </button>
-                <button className="chip-btn danger" onClick={() => action(m.id, "reset")}>
-                  Reset
-                </button>
-              </div>
-            </div>
-
-            <div className="admin-fields">
-              <div className="field">
-                <label>Nome</label>
-                <input
-                  value={m.name}
-                  onChange={(e) => updateMachine(m.id, { name: e.target.value })}
-                />
-              </div>
-              <div className="field">
-                <label>Processo atual</label>
-                <input
-                  value={m.process}
-                  onChange={(e) =>
-                    updateMachine(m.id, { process: e.target.value })
-                  }
-                />
-              </div>
-              <div className="field">
-                <label>Status</label>
-                <select
-                  value={m.status}
-                  onChange={(e) =>
-                    updateMachine(m.id, {
-                      status: e.target.value as MachineStatus,
-                    })
-                  }
-                >
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <NumField
-                label="Restante (s)"
-                value={m.remainingSeconds}
-                onChange={(v) =>
-                  updateMachine(m.id, { remainingSeconds: Math.max(0, v) })
-                }
-              />
-              <NumField
-                label="Total (s)"
-                value={m.totalSeconds}
-                onChange={(v) =>
-                  updateMachine(m.id, { totalSeconds: Math.max(1, v) })
-                }
-              />
-              {m.type === "dryer" && (
-                <NumField
-                  label="Temperatura °C"
-                  value={m.tempC}
-                  onChange={(v) => updateMachine(m.id, { tempC: v })}
-                />
-              )}
-              {m.type === "washer" && (
-                <NumField
-                  label="Água (L)"
-                  value={m.waterLiters}
-                  onChange={(v) => updateMachine(m.id, { waterLiters: v })}
-                />
-              )}
-              <div className="field">
-                <label>Disponível</label>
-                <select
-                  value={m.available ? "1" : "0"}
-                  onChange={(e) =>
-                    updateMachine(m.id, { available: e.target.value === "1" })
-                  }
-                >
-                  <option value="1">Sim</option>
-                  <option value="0">Não</option>
-                </select>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function NumField({
+function SummaryCard({
   label,
   value,
-  onChange,
-  step = 1,
+  icon,
+  textual = false,
 }: {
   label: string;
-  value: number;
-  onChange: (v: number) => void;
-  step?: number;
+  value: number | string;
+  icon: React.ReactNode;
+  textual?: boolean;
 }) {
   return (
-    <div className="field">
-      <label>{label}</label>
-      <input
-        type="number"
-        step={step}
-        value={value}
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          onChange(Number.isFinite(n) ? n : 0);
-        }}
-      />
+    <div className="glass summary-card">
+      <span className="summary-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <div>
+        <strong className={textual ? "textual" : ""}>{value}</strong>
+        <span>{label}</span>
+      </div>
     </div>
   );
 }

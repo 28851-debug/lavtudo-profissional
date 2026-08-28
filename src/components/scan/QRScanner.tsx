@@ -12,6 +12,13 @@ type Props = {
 export function QRScanner({ onResult, onError }: Props) {
   const containerId = "qr-reader-box";
   const startedRef = useRef(false);
+  const onResultRef = useRef(onResult);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    onResultRef.current = onResult;
+    onErrorRef.current = onError;
+  }, [onResult, onError]);
 
   useEffect(() => {
     let scanner: { stop: () => Promise<void>; clear: () => void } | null = null;
@@ -32,28 +39,27 @@ export function QRScanner({ onResult, onError }: Props) {
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 240, height: 240 } },
           (decoded) => {
-            onResult(decoded);
+            onResultRef.current(decoded);
           },
           () => {
             // ignore per-frame failures
           },
         );
       } catch (e) {
-        onError?.(
-          e instanceof Error
-            ? e.message
-            : "Não foi possível iniciar a câmera.",
-        );
+        onErrorRef.current?.(e instanceof Error ? e.message : "Não foi possível iniciar a câmera.");
       }
     })();
 
     return () => {
       cancelled = true;
       if (scanner && startedRef.current) {
-        scanner.stop().then(() => scanner?.clear()).catch(() => {});
+        scanner
+          .stop()
+          .then(() => scanner?.clear())
+          .catch(() => {});
       }
     };
-  }, [onResult, onError]);
+  }, []);
 
   return <div id={containerId} />;
 }

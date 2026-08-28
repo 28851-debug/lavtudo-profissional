@@ -1,13 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import {
-  WashingMachine,
-  Wind,
-  Thermometer,
-  Droplets,
-  Clock,
-  CheckCircle2,
-} from "lucide-react";
+import { WashingMachine, Wind, Thermometer, Droplets, Clock, CheckCircle2 } from "lucide-react";
 import {
   STATUS_LABEL,
   formatClock,
@@ -39,7 +32,11 @@ export function MachineDashboard({ machine }: { machine: Machine }) {
 
   return (
     <div className="container-page">
-      <Link to="/scan" className="lav-nav-link" style={{ display: "inline-block", marginBottom: 8 }}>
+      <Link
+        to="/scan"
+        className="lav-nav-link"
+        style={{ display: "inline-block", marginBottom: 8 }}
+      >
         ← Voltar
       </Link>
 
@@ -54,9 +51,7 @@ export function MachineDashboard({ machine }: { machine: Machine }) {
         <div className="mach-title" style={{ flex: 1 }}>
           <h1>{machine.name}</h1>
           <p>{machine.process}</p>
-          <span className={badgeClass(machine)}>
-            {STATUS_LABEL[machine.status]}
-          </span>
+          <span className={badgeClass(machine)}>{STATUS_LABEL[machine.status]}</span>
         </div>
       </motion.div>
 
@@ -68,9 +63,7 @@ export function MachineDashboard({ machine }: { machine: Machine }) {
           transition={{ delay: 0.05 }}
         >
           <h3>Tempo restante</h3>
-          <div className="progress-time">
-            {formatDuration(machine.remainingSeconds)}
-          </div>
+          <div className="progress-time">{formatDuration(machine.remainingSeconds)}</div>
           <div className="progress-sub">{pct.toFixed(0)}% concluído</div>
           <div className="progress-bar-outer" aria-label="Progresso do ciclo">
             <div className="progress-bar-inner" style={{ width: `${pct}%` }} />
@@ -144,15 +137,7 @@ export function MachineDashboard({ machine }: { machine: Machine }) {
   );
 }
 
-function Stat({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
     <div className="stat-item">
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

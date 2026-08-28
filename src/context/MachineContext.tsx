@@ -135,19 +135,11 @@ export function MachineProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(t);
   }, [hydrated]);
 
-  const getMachine = useCallback(
-    (id: string) => machines.find((m) => m.id === id),
-    [machines],
-  );
+  const getMachine = useCallback((id: string) => machines.find((m) => m.id === id), [machines]);
 
-  const updateMachine = useCallback(
-    (id: string, patch: Partial<Machine>) => {
-      setMachines((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, ...patch } : m)),
-      );
-    },
-    [],
-  );
+  const updateMachine = useCallback((id: string, patch: Partial<Machine>) => {
+    setMachines((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  }, []);
 
   const resetAll = useCallback(() => {
     setMachines(DEFAULT_MACHINES);
@@ -166,8 +158,7 @@ export function MachineProvider({ children }: { children: ReactNode }) {
               status: first,
               process: processLabel(first),
               startedAt: Date.now(),
-              remainingSeconds:
-                m.remainingSeconds > 0 ? m.remainingSeconds : m.totalSeconds,
+              remainingSeconds: m.remainingSeconds > 0 ? m.remainingSeconds : m.totalSeconds,
               available: false,
             };
           }

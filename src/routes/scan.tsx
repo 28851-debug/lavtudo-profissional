@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Nfc, QrCode, Info } from "lucide-react";
+import { Camera, Hash, Info, Keyboard, Nfc, QrCode } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { QRScanner } from "@/components/scan/QRScanner";
 import "@/styles/app.css";
@@ -9,98 +8,119 @@ import "@/styles/app.css";
 export const Route = createFileRoute("/scan")({
   head: () => ({
     meta: [
-      { title: "Escanear máquina — LavTudo" },
+      { title: "Acompanhar lavagem — LavTudo" },
       {
         name: "description",
-        content:
-          "Escaneie o QR Code ou aproxime o NFC para acompanhar sua lavagem em tempo real.",
-      },
-      { property: "og:title", content: "Escanear máquina — LavTudo" },
-      {
-        property: "og:description",
-        content: "Aproxime o NFC ou escaneie o QR Code para abrir sua máquina.",
+        content: "Escaneie o QR Code, use a etiqueta NFC ou informe o número da lavagem.",
       },
     ],
   }),
   component: ScanPage,
 });
 
-const VALID_IDS = new Set(["maq1", "maq2", "sec1", "sec2"]);
+const LEGACY_MACHINE_IDS = new Set(["maq1", "maq2", "sec1", "sec2"]);
 
-function extractMachineId(text: string): string | null {
-  const t = text.trim();
-  if (VALID_IDS.has(t)) return t;
+type Destination = { kind: "wash" | "machine"; id: string };
+
+function extractDestination(value: string): Destination | null {
+  const text = value.trim();
+  if (/^#?\d{1,12}$/u.test(text)) return { kind: "wash", id: text.replace(/^#/u, "") };
+  if (LEGACY_MACHINE_IDS.has(text.toLowerCase()))
+    return { kind: "machine", id: text.toLowerCase() };
+
   try {
-    const u = new URL(t);
-    const seg = u.pathname.split("/").filter(Boolean).pop() ?? "";
-    if (VALID_IDS.has(seg)) return seg;
+    const url = new URL(text);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const trackingIndex = segments.indexOf("acompanhar");
+    const washId = trackingIndex >= 0 ? segments[trackingIndex + 1] : undefined;
+    if (washId && /^\d{1,12}$/u.test(washId)) return { kind: "wash", id: washId };
+    const lastSegment = segments.at(-1)?.toLowerCase();
+    if (lastSegment && LEGACY_MACHINE_IDS.has(lastSegment)) {
+      return { kind: "machine", id: lastSegment };
+    }
   } catch {
-    // not a URL
+    // The value may be a plain identifier rather than a URL.
   }
-  const match = t.match(/(maq[12]|sec[12])/i);
-  if (match) return match[1].toLowerCase();
+
   return null;
 }
 
 function ScanPage() {
   const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
-  const [nfcState, setNfcState] = useState<
-    { kind: "idle" } | { kind: "info"; msg: string } | { kind: "error"; msg: string }
-  >({ kind: "idle" });
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [manualId, setManualId] = useState("");
+  const [message, setMessage] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [nfcBusy, setNfcBusy] = useState(false);
 
-  const goToMachine = (id: string) => {
-    navigate({ to: "/$machineId", params: { machineId: id } });
+  const openDestination = (destination: Destination) => {
+    if (destination.kind === "wash") {
+      void navigate({ to: "/acompanhar/$washId", params: { washId: destination.id } });
+    } else {
+      void navigate({ to: "/$machineId", params: { machineId: destination.id } });
+    }
+  };
+
+  const handleValue = (value: string) => {
+    const destination = extractDestination(value);
+    if (!destination) {
+      setMessage({
+        kind: "error",
+        text: "Não reconhecemos este acesso. Leia o QR Code, aproxime a etiqueta NFC ou informe o número da lavagem.",
+      });
+      return;
+    }
+    setShowScanner(false);
+    openDestination(destination);
   };
 
   const handleNfc = async () => {
-    setScanError(null);
-    setNfcState({ kind: "idle" });
-    const hasNfc = typeof window !== "undefined" && "NDEFReader" in window;
-    if (!hasNfc) {
-      setNfcState({
+    setMessage(null);
+    if (!("NDEFReader" in window)) {
+      setMessage({
         kind: "info",
-        msg: "Seu navegador não suporta Web NFC. Para demonstração, simulando leitura da maq1…",
+        text: "Neste aparelho, aproxime a etiqueta NFC fora do navegador. O sistema do celular abrirá a URL da lavagem automaticamente.",
       });
-      setTimeout(() => goToMachine("maq1"), 1200);
       return;
     }
+
     try {
       setNfcBusy(true);
-      // @ts-expect-error - NDEFReader is not in default lib types
+      // @ts-expect-error Web NFC ainda não faz parte dos tipos DOM padrão.
       const reader = new window.NDEFReader();
       await reader.scan();
-      setNfcState({
-        kind: "info",
-        msg: "Aproxime o cartão NFC do celular…",
-      });
-      reader.onreading = (event: { message: { records: Array<{ data?: BufferSource }> } }) => {
-        try {
-          const record = event.message.records[0];
-          const decoder = new TextDecoder();
-          const text = record?.data ? decoder.decode(record.data) : "";
-          const id = extractMachineId(text);
-          if (id) {
-            goToMachine(id);
-          } else {
-            setNfcState({ kind: "error", msg: "Cartão NFC não reconhecido." });
+      setMessage({ kind: "info", text: "Leitor ativo. Aproxime a etiqueta NFC do celular." });
+      reader.onreading = (event: {
+        message: { records: Array<{ data?: BufferSource; recordType?: string }> };
+      }) => {
+        for (const record of event.message.records) {
+          if (!record.data) continue;
+          try {
+            const decoded = new TextDecoder().decode(record.data);
+            const destination = extractDestination(decoded);
+            if (destination) {
+              setNfcBusy(false);
+              openDestination(destination);
+              return;
+            }
+          } catch {
+            // Try the next record.
           }
-        } catch {
-          setNfcState({ kind: "error", msg: "Falha ao ler o cartão NFC." });
-        } finally {
-          setNfcBusy(false);
         }
+        setNfcBusy(false);
+        setMessage({ kind: "error", text: "A etiqueta não contém uma URL de lavagem válida." });
       };
-    } catch (e) {
+      reader.onreadingerror = () => {
+        setNfcBusy(false);
+        setMessage({ kind: "error", text: "Não foi possível ler esta etiqueta NFC." });
+      };
+    } catch (caught) {
       setNfcBusy(false);
-      setNfcState({
+      setMessage({
         kind: "error",
-        msg:
-          e instanceof Error
-            ? `Permissão negada ou NFC indisponível: ${e.message}`
-            : "NFC indisponível.",
+        text:
+          caught instanceof Error
+            ? `NFC indisponível: ${caught.message}`
+            : "Não foi possível ativar o NFC.",
       });
     }
   };
@@ -108,98 +128,109 @@ function ScanPage() {
   return (
     <div className="lav-shell">
       <Nav />
-      <div className="container-page">
-        <div className="scan-hero">
-          <h1>Escaneie sua máquina</h1>
-          <p>
-            Aproxime seu celular do cartão NFC ou escaneie o QR Code fixado na
-            máquina para acompanhar seu ciclo em tempo real.
-          </p>
-        </div>
+      <main className="container-page access-page">
+        <header className="page-heading centered">
+          <p className="eyebrow">Acompanhamento em tempo real</p>
+          <h1>Abra sua lavagem</h1>
+          <p>Escaneie o QR Code ou aproxime o celular da etiqueta NFC da sua lavagem.</p>
+        </header>
 
-        <motion.div
-          className="glass scan-card"
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="scan-icons">
-            <div className="scan-icon-tile">
-              <Nfc size={44} color="#e6dcff" />
-              <span>NFC</span>
+        <section className="access-options" aria-label="Opções de acesso">
+          <article className="glass access-option-card featured">
+            <div className="access-icon">
+              <QrCode size={34} />
             </div>
-            <div className="scan-icon-tile">
-              <QrCode size={44} color="#e6dcff" />
-              <span>QR Code</span>
-            </div>
-          </div>
-
-          <div className="scan-actions">
+            <h2>QR Code</h2>
+            <p>Aponte a câmera para o QR Code vinculado à sua lavagem.</p>
             <button
-              className="btn-primary"
-              onClick={handleNfc}
-              disabled={nfcBusy}
-            >
-              {nfcBusy ? "Aguardando NFC…" : "Escanear NFC"}
-            </button>
-            <button
-              className="btn-secondary"
+              className="button primary full"
+              type="button"
               onClick={() => {
-                setScanError(null);
-                setShowScanner((v) => !v);
+                setMessage(null);
+                setShowScanner((value) => !value);
               }}
             >
-              {showScanner ? "Fechar câmera" : "Escanear QR Code"}
+              <Camera size={18} />
+              {showScanner ? "Fechar câmera" : "Abrir câmera"}
             </button>
-          </div>
+          </article>
 
-          {nfcState.kind !== "idle" && (
-            <div
-              className={`scan-msg ${nfcState.kind === "error" ? "error" : ""}`}
-            >
-              {nfcState.msg}
+          <article className="glass access-option-card">
+            <div className="access-icon">
+              <Nfc size={35} />
             </div>
-          )}
+            <h2>NFC</h2>
+            <p>A etiqueta contém a mesma URL única do QR Code.</p>
+            <button
+              className="button secondary full"
+              type="button"
+              onClick={() => void handleNfc()}
+              disabled={nfcBusy}
+            >
+              <Nfc size={18} />
+              {nfcBusy ? "Aguardando etiqueta…" : "Ler etiqueta NFC"}
+            </button>
+          </article>
+        </section>
 
-          {showScanner && (
-            <>
-              <QRScanner
-                onResult={(text) => {
-                  const id = extractMachineId(text);
-                  if (id) {
-                    setShowScanner(false);
-                    goToMachine(id);
-                  } else {
-                    setScanError(`QR não reconhecido: ${text.slice(0, 40)}`);
-                  }
-                }}
-                onError={(err) => setScanError(err)}
+        {showScanner && (
+          <section className="glass scanner-panel" aria-label="Leitor de QR Code">
+            <QRScanner
+              onResult={handleValue}
+              onError={(error) => setMessage({ kind: "error", text: error })}
+            />
+          </section>
+        )}
+
+        <section className="glass manual-code-card">
+          <div className="manual-code-heading">
+            <div className="access-icon small">
+              <Keyboard size={23} />
+            </div>
+            <div>
+              <h2>Informar número</h2>
+              <p>Use esta opção somente se a equipe informou o número da lavagem.</p>
+            </div>
+          </div>
+          <form
+            className="manual-code-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleValue(manualId);
+            }}
+          >
+            <label className="sr-only" htmlFor="wash-code">
+              Número da lavagem
+            </label>
+            <div className="code-input-wrap">
+              <Hash size={19} />
+              <input
+                id="wash-code"
+                inputMode="numeric"
+                pattern="[0-9#]*"
+                title="Digite apenas o número da lavagem"
+                placeholder="1024"
+                value={manualId}
+                onChange={(event) => setManualId(event.target.value)}
+                required
               />
-              {scanError && (
-                <div className="scan-msg error">{scanError}</div>
-              )}
-            </>
-          )}
+            </div>
+            <button className="button primary" type="submit">
+              Acompanhar
+            </button>
+          </form>
+        </section>
 
-          <div className="scan-msg" style={{ display: "flex", gap: 8 }}>
-            <Info size={16} color="#e6dcff" />
-            <span>
-              Sem cartão físico? Use as opções abaixo para simular a leitura
-              (demonstração TCC).
-            </span>
+        {message && (
+          <div
+            className={`notice ${message.kind === "error" ? "danger" : "info"}`}
+            role={message.kind === "error" ? "alert" : "status"}
+          >
+            <Info size={18} />
+            <span>{message.text}</span>
           </div>
-          <div className="demo-picker">
-            {["maq1", "maq2", "sec1", "sec2"].map((id) => (
-              <button
-                key={id}
-                className="demo-pill"
-                onClick={() => goToMachine(id)}
-              >
-                Abrir /{id}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      </div>
+        )}
+      </main>
     </div>
   );
 }

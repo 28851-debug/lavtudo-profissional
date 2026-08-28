@@ -18,16 +18,16 @@ function NotFoundComponent() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">Página não encontrada</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          O endereço informado não existe ou foi movido.
         </p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Go home
+            Voltar ao início
           </Link>
         </div>
       </div>
@@ -46,10 +46,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          Não foi possível carregar esta página
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Ocorreu um erro inesperado. Tente novamente ou volte ao início.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -59,13 +59,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            Tentar novamente
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            Voltar ao início
           </a>
         </div>
       </div>
@@ -78,29 +78,38 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "LavTudo — Lavanderia self-service" },
+      { title: "LavTudo — Lavanderia Express 24 horas" },
       {
         name: "description",
         content:
-          "LavTudo: lavanderia self-service com lavadoras, secadoras e lavadora pet. Escaneie o QR code e acompanhe sua lavagem.",
+          "Lavanderia express 24 horas com acompanhamento da lavagem pelo celular via QR Code ou NFC.",
       },
       { name: "author", content: "LavTudo" },
-      { property: "og:title", content: "LavTudo — Lavanderia self-service" },
+      { property: "og:title", content: "LavTudo — Lavanderia Express 24 horas" },
       {
         property: "og:description",
-        content:
-          "LavTudo: lavanderia self-service com lavadoras, secadoras e lavadora pet. Escaneie o QR code e acompanhe sua lavagem.",
+        content: "Deixe suas roupas e acompanhe cada etapa da lavagem pelo celular.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "LavTudo — Lavanderia self-service" },
-      { name: "twitter:description", content: "LavTudo: lavanderia self-service com lavadoras, secadoras e lavadora pet. Escaneie o QR code e acompanhe sua lavagem." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a917f248-eb18-4f66-9223-858381f1c9ac/id-preview-046debbd--a05b88b7-d7e4-4f47-afaa-491a199cd690.lovable.app-1783546234884.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a917f248-eb18-4f66-9223-858381f1c9ac/id-preview-046debbd--a05b88b7-d7e4-4f47-afaa-491a199cd690.lovable.app-1783546234884.png" },
+      { name: "twitter:title", content: "LavTudo — Lavanderia Express 24 horas" },
+      {
+        name: "twitter:description",
+        content: "Deixe suas roupas e acompanhe cada etapa da lavagem pelo celular.",
+      },
+      {
+        property: "og:image",
+        content: "/lavtudo-logo.webp",
+      },
+      {
+        name: "twitter:image",
+        content: "/lavtudo-logo.webp",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/lavtudo-logo.webp", type: "image/webp" },
+      { rel: "apple-touch-icon", href: "/lavtudo-logo.webp" },
     ],
   }),
   shellComponent: RootShell,
@@ -111,11 +120,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <head suppressHydrationWarning>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {children}
         <Scripts />
       </body>

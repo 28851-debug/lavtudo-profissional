@@ -107,12 +107,7 @@ export const WASHER_STAGES: MachineStatus[] = [
   "finished",
 ];
 
-export const DRYER_STAGES: MachineStatus[] = [
-  "waiting",
-  "drying",
-  "cooling",
-  "finished",
-];
+export const DRYER_STAGES: MachineStatus[] = ["waiting", "drying", "cooling", "finished"];
 
 export function stagesFor(type: MachineType): MachineStatus[] {
   return type === "washer" ? WASHER_STAGES : DRYER_STAGES;
@@ -120,14 +115,9 @@ export function stagesFor(type: MachineType): MachineStatus[] {
 
 /** Pick the current stage from progress %, excluding "waiting" and "finished". */
 export function stageFromProgress(m: Machine): MachineStatus {
-  const stages = stagesFor(m.type).filter(
-    (s) => s !== "waiting" && s !== "finished",
-  );
+  const stages = stagesFor(m.type).filter((s) => s !== "waiting" && s !== "finished");
   const p = progressPercent(m);
-  const idx = Math.min(
-    stages.length - 1,
-    Math.floor((p / 100) * stages.length),
-  );
+  const idx = Math.min(stages.length - 1, Math.floor((p / 100) * stages.length));
   return stages[idx];
 }
 

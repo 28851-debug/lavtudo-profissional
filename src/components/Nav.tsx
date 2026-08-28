@@ -1,31 +1,35 @@
 import { Link } from "@tanstack/react-router";
-import logo from "@/assets/logo.png";
+import { Home, QrCode } from "lucide-react";
+import "@/styles/app.css";
 
-export function Nav() {
+export function Nav({ compact = false }: { compact?: boolean }) {
   return (
-    <nav className="lav-nav">
+    <nav className={`lav-nav ${compact ? "compact" : ""}`} aria-label="Navegação principal">
       <Link to="/" className="lav-nav-brand">
-        <img src={logo} alt="LavTudo" />
+        <img src="/lavtudo-logo.webp" alt="Logo LavTudo Lavanderia Express 24 horas" />
         <span>LavTudo</span>
       </Link>
       <div className="lav-nav-links">
         <Link
           to="/"
           className="lav-nav-link"
+          aria-label="Início"
           activeProps={{ className: "lav-nav-link active" }}
           activeOptions={{ exact: true }}
         >
-          Início
+          <Home size={17} aria-hidden="true" />
+          <span className="nav-link-label">Início</span>
         </Link>
         <Link
           to="/scan"
           className="lav-nav-link"
+          aria-label="Acompanhar lavagem"
           activeProps={{ className: "lav-nav-link active" }}
         >
-          Scan
+          <QrCode size={17} aria-hidden="true" />
+          <span className="nav-link-label">Acompanhar</span>
         </Link>
       </div>
-
     </nav>
   );
 }
