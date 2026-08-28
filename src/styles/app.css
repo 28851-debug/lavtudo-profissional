@@ -1357,28 +1357,6 @@ select:focus-visible {
   font-size: 0.82rem;
   font-weight: 760;
 }
-.live-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 9px;
-  border: 1px solid rgba(46, 210, 154, 0.3);
-  border-radius: 999px;
-  background: rgba(46, 210, 154, 0.12);
-  color: #a8f4d8;
-  font-size: 0.67rem;
-  font-weight: 850;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.live-indicator svg {
-  animation: pulseOpacity 1.3s ease-in-out infinite;
-}
-.live-indicator.offline {
-  border-color: rgba(248, 171, 73, 0.32);
-  background: rgba(248, 171, 73, 0.13);
-  color: #ffdba5;
-}
 .customer-status-card {
   position: relative;
   overflow: hidden;
