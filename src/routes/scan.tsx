@@ -1,8 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Camera, Hash, Info, Keyboard, Nfc, QrCode } from "lucide-react";
+import { Camera, Info, Nfc, QrCode } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { QRScanner } from "@/components/scan/QRScanner";
+import { isLaundryMachineId, type LaundryMachineId } from "@/lib/washes";
 import "@/styles/app.css";
 
 export const Route = createFileRoute("/scan")({
@@ -11,35 +12,25 @@ export const Route = createFileRoute("/scan")({
       { title: "Acompanhar lavagem — LavTudo" },
       {
         name: "description",
-        content: "Escaneie o QR Code, use a etiqueta NFC ou informe o número da lavagem.",
+        content: "Escaneie o QR Code permanente da máquina ou aproxime o cartão NFC.",
       },
     ],
   }),
   component: ScanPage,
 });
 
-const LEGACY_MACHINE_IDS = new Set(["maq1", "maq2", "sec1", "sec2"]);
-
-type Destination = { kind: "wash" | "machine"; id: string };
-
-function extractDestination(value: string): Destination | null {
+function extractMachineId(value: string): LaundryMachineId | null {
   const text = value.trim();
-  if (/^#?\d{1,12}$/u.test(text)) return { kind: "wash", id: text.replace(/^#/u, "") };
-  if (LEGACY_MACHINE_IDS.has(text.toLowerCase()))
-    return { kind: "machine", id: text.toLowerCase() };
+  if (isLaundryMachineId(text.toLowerCase())) return text.toLowerCase() as LaundryMachineId;
 
   try {
     const url = new URL(text);
     const segments = url.pathname.split("/").filter(Boolean);
     const trackingIndex = segments.indexOf("acompanhar");
-    const washId = trackingIndex >= 0 ? segments[trackingIndex + 1] : undefined;
-    if (washId && /^\d{1,12}$/u.test(washId)) return { kind: "wash", id: washId };
-    const lastSegment = segments.at(-1)?.toLowerCase();
-    if (lastSegment && LEGACY_MACHINE_IDS.has(lastSegment)) {
-      return { kind: "machine", id: lastSegment };
-    }
+    const machineId = trackingIndex >= 0 ? segments[trackingIndex + 1]?.toLowerCase() : undefined;
+    if (machineId && isLaundryMachineId(machineId)) return machineId;
   } catch {
-    // The value may be a plain identifier rather than a URL.
+    // O QR pode armazenar somente o identificador permanente da máquina.
   }
 
   return null;
@@ -48,29 +39,24 @@ function extractDestination(value: string): Destination | null {
 function ScanPage() {
   const navigate = useNavigate();
   const [showScanner, setShowScanner] = useState(false);
-  const [manualId, setManualId] = useState("");
   const [message, setMessage] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [nfcBusy, setNfcBusy] = useState(false);
 
-  const openDestination = (destination: Destination) => {
-    if (destination.kind === "wash") {
-      void navigate({ to: "/acompanhar/$washId", params: { washId: destination.id } });
-    } else {
-      void navigate({ to: "/$machineId", params: { machineId: destination.id } });
-    }
+  const openMachine = (machineId: LaundryMachineId) => {
+    void navigate({ to: "/acompanhar/$machineId", params: { machineId } });
   };
 
   const handleValue = (value: string) => {
-    const destination = extractDestination(value);
-    if (!destination) {
+    const machineId = extractMachineId(value);
+    if (!machineId) {
       setMessage({
         kind: "error",
-        text: "Não reconhecemos este acesso. Leia o QR Code, aproxime a etiqueta NFC ou informe o número da lavagem.",
+        text: "Este QR Code não corresponde a uma máquina LavTudo.",
       });
       return;
     }
     setShowScanner(false);
-    openDestination(destination);
+    openMachine(machineId);
   };
 
   const handleNfc = async () => {
@@ -78,7 +64,7 @@ function ScanPage() {
     if (!("NDEFReader" in window)) {
       setMessage({
         kind: "info",
-        text: "Neste aparelho, aproxime a etiqueta NFC fora do navegador. O sistema do celular abrirá a URL da lavagem automaticamente.",
+        text: "Neste aparelho, aproxime o cartão NFC fora do navegador. O sistema do celular abrirá a página da máquina automaticamente.",
       });
       return;
     }
@@ -96,10 +82,10 @@ function ScanPage() {
           if (!record.data) continue;
           try {
             const decoded = new TextDecoder().decode(record.data);
-            const destination = extractDestination(decoded);
-            if (destination) {
+            const machineId = extractMachineId(decoded);
+            if (machineId) {
               setNfcBusy(false);
-              openDestination(destination);
+              openMachine(machineId);
               return;
             }
           } catch {
@@ -107,7 +93,7 @@ function ScanPage() {
           }
         }
         setNfcBusy(false);
-        setMessage({ kind: "error", text: "A etiqueta não contém uma URL de lavagem válida." });
+        setMessage({ kind: "error", text: "A etiqueta não contém uma URL de máquina válida." });
       };
       reader.onreadingerror = () => {
         setNfcBusy(false);
@@ -131,8 +117,8 @@ function ScanPage() {
       <main className="container-page access-page">
         <header className="page-heading centered">
           <p className="eyebrow">Acompanhamento em tempo real</p>
-          <h1>Abra sua lavagem</h1>
-          <p>Escaneie o QR Code ou aproxime o celular da etiqueta NFC da sua lavagem.</p>
+          <h1>Acompanhe sua máquina</h1>
+          <p>Escaneie o QR Code fixo ou aproxime o celular do cartão NFC da máquina.</p>
         </header>
 
         <section className="access-options" aria-label="Opções de acesso">
@@ -141,7 +127,7 @@ function ScanPage() {
               <QrCode size={34} />
             </div>
             <h2>QR Code</h2>
-            <p>Aponte a câmera para o QR Code vinculado à sua lavagem.</p>
+            <p>Aponte a câmera para o QR Code permanente da lavadora ou secadora.</p>
             <button
               className="button primary full"
               type="button"
@@ -160,7 +146,7 @@ function ScanPage() {
               <Nfc size={35} />
             </div>
             <h2>NFC</h2>
-            <p>A etiqueta contém a mesma URL única do QR Code.</p>
+            <p>O cartão NFC contém a mesma URL permanente impressa no QR Code.</p>
             <button
               className="button secondary full"
               type="button"
@@ -181,45 +167,6 @@ function ScanPage() {
             />
           </section>
         )}
-
-        <section className="glass manual-code-card">
-          <div className="manual-code-heading">
-            <div className="access-icon small">
-              <Keyboard size={23} />
-            </div>
-            <div>
-              <h2>Informar número</h2>
-              <p>Use esta opção somente se a equipe informou o número da lavagem.</p>
-            </div>
-          </div>
-          <form
-            className="manual-code-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleValue(manualId);
-            }}
-          >
-            <label className="sr-only" htmlFor="wash-code">
-              Número da lavagem
-            </label>
-            <div className="code-input-wrap">
-              <Hash size={19} />
-              <input
-                id="wash-code"
-                inputMode="numeric"
-                pattern="[0-9#]*"
-                title="Digite apenas o número da lavagem"
-                placeholder="1024"
-                value={manualId}
-                onChange={(event) => setManualId(event.target.value)}
-                required
-              />
-            </div>
-            <button className="button primary" type="submit">
-              Acompanhar
-            </button>
-          </form>
-        </section>
 
         {message && (
           <div

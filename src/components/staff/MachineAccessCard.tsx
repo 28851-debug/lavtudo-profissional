@@ -1,17 +1,19 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Check, Copy, ExternalLink, Nfc } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, Nfc } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { trackingPath } from "@/lib/washes";
+import { trackingPath, type LaundryMachineId } from "@/lib/washes";
 
-export function TrackingAccessCard({
-  washId,
+export function MachineAccessCard({
+  machineId,
+  machineLabel,
   compact = false,
 }: {
-  washId: string;
+  machineId: LaundryMachineId;
+  machineLabel: string;
   compact?: boolean;
 }) {
-  const path = trackingPath(washId);
+  const path = trackingPath(machineId);
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -32,14 +34,14 @@ export function TrackingAccessCard({
 
   return (
     <div className={`tracking-access ${compact ? "compact" : ""}`}>
-      <div className="qr-frame" aria-label={`QR Code da lavagem ${washId}`}>
+      <div className="qr-frame" role="img" aria-label={`QR Code permanente da ${machineLabel}`}>
         {url ? (
           <QRCodeSVG
             value={url}
             size={compact ? 116 : 176}
             level="M"
             marginSize={2}
-            title={`Acompanhar lavagem ${washId}`}
+            title={`Acompanhar ${machineLabel}`}
             bgColor="#ffffff"
             fgColor="#18065f"
           />
@@ -48,19 +50,27 @@ export function TrackingAccessCard({
         )}
       </div>
       <div className="tracking-access-copy">
-        <p className="eyebrow">QR Code + NFC</p>
-        <h3>Lavagem #{washId}</h3>
-        <p>Grave esta mesma URL na etiqueta NFC. QR e NFC abrem o acompanhamento desta lavagem.</p>
+        <p className="eyebrow">QR Code + NFC permanentes</p>
+        <h3>{machineLabel}</h3>
+        <p>Imprima este QR uma única vez e grave a mesma URL no cartão NFC desta máquina.</p>
         <code>{path}</code>
         <div className="inline-actions">
           <button className="button secondary small" type="button" onClick={copy} disabled={!url}>
             {copied ? <Check size={16} /> : <Copy size={16} />}
             {copied ? "Copiado" : "Copiar URL"}
           </button>
+          <a
+            className="button ghost small"
+            href={`/api/qr/${machineId}`}
+            download={`qr-${machineId}.svg`}
+          >
+            <Download size={16} />
+            Baixar QR
+          </a>
           <Link
             className="button ghost small"
-            to="/acompanhar/$washId"
-            params={{ washId }}
+            to="/acompanhar/$machineId"
+            params={{ machineId }}
             target="_blank"
           >
             <ExternalLink size={16} />
@@ -69,7 +79,7 @@ export function TrackingAccessCard({
         </div>
         <div className="nfc-note">
           <Nfc size={17} aria-hidden="true" />
-          Compatível com tags NFC que armazenem uma URL (registro NDEF URI).
+          URL fixa para registro NDEF URI. Ela não muda entre os ciclos.
         </div>
       </div>
     </div>

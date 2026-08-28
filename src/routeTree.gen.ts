@@ -11,13 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as AdminRouteImport } from './routes/admin'
-import { Route as MachineIdRouteImport } from './routes/$machineId'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWashesRouteImport } from './routes/api/washes'
 import { Route as ApiSessionRouteImport } from './routes/api/session'
+import { Route as ApiMachinesRouteImport } from './routes/api/machines'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
-import { Route as AcompanharWashIdRouteImport } from './routes/acompanhar/$washId'
-import { Route as ApiWashesWashIdRouteImport } from './routes/api/washes/$washId'
+import { Route as AcompanharMachineIdRouteImport } from './routes/acompanhar/$machineId'
+import { Route as ApiQrMachineIdRouteImport } from './routes/api/qr/$machineId'
+import { Route as ApiMachinesMachineIdRouteImport } from './routes/api/machines/$machineId'
 
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
@@ -27,11 +28,6 @@ const ScanRoute = ScanRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MachineIdRoute = MachineIdRouteImport.update({
-  id: '/$machineId',
-  path: '/$machineId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,101 +45,118 @@ const ApiSessionRoute = ApiSessionRouteImport.update({
   path: '/api/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMachinesRoute = ApiMachinesRouteImport.update({
+  id: '/api/machines',
+  path: '/api/machines',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AcompanharWashIdRoute = AcompanharWashIdRouteImport.update({
-  id: '/acompanhar/$washId',
-  path: '/acompanhar/$washId',
+const AcompanharMachineIdRoute = AcompanharMachineIdRouteImport.update({
+  id: '/acompanhar/$machineId',
+  path: '/acompanhar/$machineId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiWashesWashIdRoute = ApiWashesWashIdRouteImport.update({
-  id: '/$washId',
-  path: '/$washId',
-  getParentRoute: () => ApiWashesRoute,
+const ApiQrMachineIdRoute = ApiQrMachineIdRouteImport.update({
+  id: '/api/qr/$machineId',
+  path: '/api/qr/$machineId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMachinesMachineIdRoute = ApiMachinesMachineIdRouteImport.update({
+  id: '/$machineId',
+  path: '/$machineId',
+  getParentRoute: () => ApiMachinesRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/$machineId': typeof MachineIdRoute
   '/admin': typeof AdminRoute
   '/scan': typeof ScanRoute
-  '/acompanhar/$washId': typeof AcompanharWashIdRoute
+  '/acompanhar/$machineId': typeof AcompanharMachineIdRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/machines': typeof ApiMachinesRouteWithChildren
   '/api/session': typeof ApiSessionRoute
-  '/api/washes': typeof ApiWashesRouteWithChildren
-  '/api/washes/$washId': typeof ApiWashesWashIdRoute
+  '/api/washes': typeof ApiWashesRoute
+  '/api/machines/$machineId': typeof ApiMachinesMachineIdRoute
+  '/api/qr/$machineId': typeof ApiQrMachineIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/$machineId': typeof MachineIdRoute
   '/admin': typeof AdminRoute
   '/scan': typeof ScanRoute
-  '/acompanhar/$washId': typeof AcompanharWashIdRoute
+  '/acompanhar/$machineId': typeof AcompanharMachineIdRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/machines': typeof ApiMachinesRouteWithChildren
   '/api/session': typeof ApiSessionRoute
-  '/api/washes': typeof ApiWashesRouteWithChildren
-  '/api/washes/$washId': typeof ApiWashesWashIdRoute
+  '/api/washes': typeof ApiWashesRoute
+  '/api/machines/$machineId': typeof ApiMachinesMachineIdRoute
+  '/api/qr/$machineId': typeof ApiQrMachineIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/$machineId': typeof MachineIdRoute
   '/admin': typeof AdminRoute
   '/scan': typeof ScanRoute
-  '/acompanhar/$washId': typeof AcompanharWashIdRoute
+  '/acompanhar/$machineId': typeof AcompanharMachineIdRoute
   '/api/health': typeof ApiHealthRoute
+  '/api/machines': typeof ApiMachinesRouteWithChildren
   '/api/session': typeof ApiSessionRoute
-  '/api/washes': typeof ApiWashesRouteWithChildren
-  '/api/washes/$washId': typeof ApiWashesWashIdRoute
+  '/api/washes': typeof ApiWashesRoute
+  '/api/machines/$machineId': typeof ApiMachinesMachineIdRoute
+  '/api/qr/$machineId': typeof ApiQrMachineIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/$machineId'
     | '/admin'
     | '/scan'
-    | '/acompanhar/$washId'
+    | '/acompanhar/$machineId'
     | '/api/health'
+    | '/api/machines'
     | '/api/session'
     | '/api/washes'
-    | '/api/washes/$washId'
+    | '/api/machines/$machineId'
+    | '/api/qr/$machineId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/$machineId'
     | '/admin'
     | '/scan'
-    | '/acompanhar/$washId'
+    | '/acompanhar/$machineId'
     | '/api/health'
+    | '/api/machines'
     | '/api/session'
     | '/api/washes'
-    | '/api/washes/$washId'
+    | '/api/machines/$machineId'
+    | '/api/qr/$machineId'
   id:
     | '__root__'
     | '/'
-    | '/$machineId'
     | '/admin'
     | '/scan'
-    | '/acompanhar/$washId'
+    | '/acompanhar/$machineId'
     | '/api/health'
+    | '/api/machines'
     | '/api/session'
     | '/api/washes'
-    | '/api/washes/$washId'
+    | '/api/machines/$machineId'
+    | '/api/qr/$machineId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  MachineIdRoute: typeof MachineIdRoute
   AdminRoute: typeof AdminRoute
   ScanRoute: typeof ScanRoute
-  AcompanharWashIdRoute: typeof AcompanharWashIdRoute
+  AcompanharMachineIdRoute: typeof AcompanharMachineIdRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  ApiMachinesRoute: typeof ApiMachinesRouteWithChildren
   ApiSessionRoute: typeof ApiSessionRoute
-  ApiWashesRoute: typeof ApiWashesRouteWithChildren
+  ApiWashesRoute: typeof ApiWashesRoute
+  ApiQrMachineIdRoute: typeof ApiQrMachineIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,13 +173,6 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/$machineId': {
-      id: '/$machineId'
-      path: '/$machineId'
-      fullPath: '/$machineId'
-      preLoaderRoute: typeof MachineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -190,6 +196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/machines': {
+      id: '/api/machines'
+      path: '/api/machines'
+      fullPath: '/api/machines'
+      preLoaderRoute: typeof ApiMachinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/health': {
       id: '/api/health'
       path: '/api/health'
@@ -197,44 +210,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/acompanhar/$washId': {
-      id: '/acompanhar/$washId'
-      path: '/acompanhar/$washId'
-      fullPath: '/acompanhar/$washId'
-      preLoaderRoute: typeof AcompanharWashIdRouteImport
+    '/acompanhar/$machineId': {
+      id: '/acompanhar/$machineId'
+      path: '/acompanhar/$machineId'
+      fullPath: '/acompanhar/$machineId'
+      preLoaderRoute: typeof AcompanharMachineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/washes/$washId': {
-      id: '/api/washes/$washId'
-      path: '/$washId'
-      fullPath: '/api/washes/$washId'
-      preLoaderRoute: typeof ApiWashesWashIdRouteImport
-      parentRoute: typeof ApiWashesRoute
+    '/api/qr/$machineId': {
+      id: '/api/qr/$machineId'
+      path: '/api/qr/$machineId'
+      fullPath: '/api/qr/$machineId'
+      preLoaderRoute: typeof ApiQrMachineIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/machines/$machineId': {
+      id: '/api/machines/$machineId'
+      path: '/$machineId'
+      fullPath: '/api/machines/$machineId'
+      preLoaderRoute: typeof ApiMachinesMachineIdRouteImport
+      parentRoute: typeof ApiMachinesRoute
     }
   }
 }
 
-interface ApiWashesRouteChildren {
-  ApiWashesWashIdRoute: typeof ApiWashesWashIdRoute
+interface ApiMachinesRouteChildren {
+  ApiMachinesMachineIdRoute: typeof ApiMachinesMachineIdRoute
 }
 
-const ApiWashesRouteChildren: ApiWashesRouteChildren = {
-  ApiWashesWashIdRoute: ApiWashesWashIdRoute,
+const ApiMachinesRouteChildren: ApiMachinesRouteChildren = {
+  ApiMachinesMachineIdRoute: ApiMachinesMachineIdRoute,
 }
 
-const ApiWashesRouteWithChildren = ApiWashesRoute._addFileChildren(
-  ApiWashesRouteChildren,
+const ApiMachinesRouteWithChildren = ApiMachinesRoute._addFileChildren(
+  ApiMachinesRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  MachineIdRoute: MachineIdRoute,
   AdminRoute: AdminRoute,
   ScanRoute: ScanRoute,
-  AcompanharWashIdRoute: AcompanharWashIdRoute,
+  AcompanharMachineIdRoute: AcompanharMachineIdRoute,
   ApiHealthRoute: ApiHealthRoute,
+  ApiMachinesRoute: ApiMachinesRouteWithChildren,
   ApiSessionRoute: ApiSessionRoute,
-  ApiWashesRoute: ApiWashesRouteWithChildren,
+  ApiWashesRoute: ApiWashesRoute,
+  ApiQrMachineIdRoute: ApiQrMachineIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

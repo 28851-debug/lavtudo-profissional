@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import type { Wash, WashCreateInput, WashStatus } from "./washes";
+import type { LaundryMachine, LaundryMachineId, Wash, WashCreateInput, WashStatus } from "./washes";
 
 type SupabaseConfig = { url: string; key: string };
 
@@ -68,25 +68,36 @@ export async function listWashes(): Promise<Wash[]> {
   });
 }
 
-export async function findWash(id: string): Promise<Wash | undefined> {
-  const wash = await supabaseRpc<Wash | null>(
-    "lavtudo_get_wash",
-    { p_id: id },
-    { "X-LavTudo-Wash-Id": id },
-  );
-  return wash ?? undefined;
+export async function listMachines(): Promise<LaundryMachine[]> {
+  const credentials = databaseAdminCredentials();
+  return supabaseRpc<LaundryMachine[]>("lavtudo_list_machines", credentials, {
+    "X-LavTudo-Admin-User": credentials.p_user,
+    "X-LavTudo-Admin-Password": credentials.p_password,
+  });
 }
 
-export async function createWash(input: WashCreateInput): Promise<Wash> {
+export async function findMachine(id: LaundryMachineId): Promise<LaundryMachine | undefined> {
+  const machine = await supabaseRpc<LaundryMachine | null>(
+    "lavtudo_get_machine",
+    { p_id: id },
+    { "X-LavTudo-Machine-Id": id },
+  );
+  return machine ?? undefined;
+}
+
+export async function createWash(
+  machineId: LaundryMachineId,
+  input: WashCreateInput,
+): Promise<LaundryMachine> {
   const credentials = databaseAdminCredentials();
-  return supabaseRpc<Wash>(
-    "lavtudo_create_wash",
+  return supabaseRpc<LaundryMachine>(
+    "lavtudo_start_machine_wash",
     {
       ...credentials,
-      p_customer_name: input.customerName,
-      p_machine_label: input.machineLabel,
+      p_machine_id: machineId,
       p_service_type: input.serviceType,
       p_estimated_minutes: input.estimatedMinutes,
+      p_started_at: input.startedAt,
     },
     {
       "X-LavTudo-Admin-User": credentials.p_user,
@@ -95,28 +106,33 @@ export async function createWash(input: WashCreateInput): Promise<Wash> {
   );
 }
 
-export async function setWashStatus(id: string, status: WashStatus): Promise<Wash | undefined> {
+export async function setMachineStatus(
+  machineId: LaundryMachineId,
+  status: WashStatus,
+): Promise<LaundryMachine | undefined> {
   const credentials = databaseAdminCredentials();
-  const wash = await supabaseRpc<Wash | null>(
-    "lavtudo_set_wash_status",
-    { ...credentials, p_id: id, p_status: status },
+  const machine = await supabaseRpc<LaundryMachine | null>(
+    "lavtudo_set_machine_status",
+    { ...credentials, p_machine_id: machineId, p_status: status },
     {
       "X-LavTudo-Admin-User": credentials.p_user,
       "X-LavTudo-Admin-Password": credentials.p_password,
     },
   );
-  return wash ?? undefined;
+  return machine ?? undefined;
 }
 
-export async function resetWash(id: string): Promise<Wash | undefined> {
+export async function releaseMachine(
+  machineId: LaundryMachineId,
+): Promise<LaundryMachine | undefined> {
   const credentials = databaseAdminCredentials();
-  const wash = await supabaseRpc<Wash | null>(
-    "lavtudo_reset_wash",
-    { ...credentials, p_id: id },
+  const machine = await supabaseRpc<LaundryMachine | null>(
+    "lavtudo_release_machine",
+    { ...credentials, p_machine_id: machineId },
     {
       "X-LavTudo-Admin-User": credentials.p_user,
       "X-LavTudo-Admin-Password": credentials.p_password,
     },
   );
-  return wash ?? undefined;
+  return machine ?? undefined;
 }

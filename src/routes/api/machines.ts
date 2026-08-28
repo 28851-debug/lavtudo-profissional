@@ -1,18 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAdminRequest } from "@/lib/auth.server";
 import { apiError, jsonResponse } from "@/lib/http";
-import { listWashes, storageMode } from "@/lib/wash-store.server";
+import { listMachines, storageMode } from "@/lib/wash-store.server";
 
-export const Route = createFileRoute("/api/washes")({
+export const Route = createFileRoute("/api/machines")({
   server: {
     handlers: {
       GET: async ({ request }) => {
         if (!(await isAdminRequest(request))) return apiError("Não autorizado.", 401);
         try {
-          return jsonResponse({ washes: await listWashes(), storage: storageMode() });
+          return jsonResponse({ machines: await listMachines(), storage: storageMode() });
         } catch (error) {
-          console.error("Falha ao listar lavagens", error);
-          return apiError("Não foi possível carregar as lavagens.", 503);
+          console.error("Falha ao listar máquinas", error);
+          return apiError("Não foi possível carregar as máquinas.", 503);
         }
       },
     },

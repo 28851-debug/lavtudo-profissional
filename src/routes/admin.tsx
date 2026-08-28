@@ -1,24 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  CheckCircle2,
   DatabaseZap,
   History,
   LogOut,
-  Plus,
+  Play,
   QrCode,
   RefreshCw,
   WashingMachine,
+  Wind,
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
+import { MachineAccessCard } from "@/components/staff/MachineAccessCard";
 import { StaffGate } from "@/components/staff/StaffGate";
 import { StatusControls } from "@/components/staff/StatusControls";
-import { TrackingAccessCard } from "@/components/staff/TrackingAccessCard";
-import { DEFAULT_MACHINES } from "@/lib/machines";
 import {
+  SERVICE_LABEL,
   STATUS_SHORT_LABEL,
   formatWashDate,
+  remainingMinutesForWash,
+  type LaundryMachine,
+  type LaundryMachineId,
   type Wash,
   type WashCreateInput,
+  type WashServiceType,
   type WashStatus,
 } from "@/lib/washes";
 import "@/styles/app.css";
@@ -27,7 +33,7 @@ export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
       { title: "Painel do funcionário — LavTudo" },
-      { name: "description", content: "Painel seguro de acompanhamento das lavagens LavTudo." },
+      { name: "description", content: "Gestão das máquinas e ciclos LavTudo." },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -44,53 +50,94 @@ function AdminPage() {
 }
 
 function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
-  const [washes, setWashes] = useState<Wash[]>([]);
+  const [machines, setMachines] = useState<LaundryMachine[]>([]);
+  const [history, setHistory] = useState<Wash[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [selectedQrId, setSelectedQrId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  const [busyId, setBusyId] = useState<LaundryMachineId | null>(null);
+  const [selectedQrId, setSelectedQrId] = useState<LaundryMachineId | null>(null);
+  const [startMachineId, setStartMachineId] = useState<LaundryMachineId | null>(null);
 
-  const loadWashes = useCallback(async (silent = false) => {
+  const loadDashboard = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const response = await fetch("/api/washes", { cache: "no-store" });
-      const body = (await response.json()) as {
-        washes?: Wash[];
+      const [machinesResponse, historyResponse] = await Promise.all([
+        fetch("/api/machines", { cache: "no-store" }),
+        fetch("/api/washes", { cache: "no-store" }),
+      ]);
+      const machinesBody = (await machinesResponse.json()) as {
+        machines?: LaundryMachine[];
         error?: string;
       };
-      if (!response.ok || !body.washes) throw new Error(body.error || "Falha ao carregar.");
-      setWashes(body.washes);
+      const historyBody = (await historyResponse.json()) as { washes?: Wash[]; error?: string };
+      if (!machinesResponse.ok || !machinesBody.machines) {
+        throw new Error(machinesBody.error || "Falha ao carregar as máquinas.");
+      }
+      if (!historyResponse.ok || !historyBody.washes) {
+        throw new Error(historyBody.error || "Falha ao carregar o histórico.");
+      }
+      setMachines(machinesBody.machines);
+      setHistory(historyBody.washes);
       setError(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não foi possível carregar as lavagens.");
+      setError(caught instanceof Error ? caught.message : "Não foi possível carregar o painel.");
     } finally {
       if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadWashes();
-    const interval = window.setInterval(() => void loadWashes(true), 2500);
+    void loadDashboard();
+    const interval = window.setInterval(() => void loadDashboard(true), 2500);
     return () => window.clearInterval(interval);
-  }, [loadWashes]);
+  }, [loadDashboard]);
 
-  const mutateWash = async (id: string, body: { status: WashStatus } | { action: "reset" }) => {
-    setBusyId(id);
+  const replaceMachine = (updated: LaundryMachine) => {
+    setMachines((current) =>
+      current.map((machine) => (machine.id === updated.id ? updated : machine)),
+    );
+  };
+
+  const startWash = async (machineId: LaundryMachineId, input: WashCreateInput) => {
+    setBusyId(machineId);
     setError(null);
     try {
-      const response = await fetch(`/api/washes/${encodeURIComponent(id)}`, {
+      const response = await fetch(`/api/machines/${machineId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(input),
+      });
+      const body = (await response.json()) as { machine?: LaundryMachine; error?: string };
+      if (!response.ok || !body.machine) throw new Error(body.error || "Falha ao iniciar ciclo.");
+      replaceMachine(body.machine);
+      setStartMachineId(null);
+      setSelectedQrId(machineId);
+      void loadDashboard(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Não foi possível iniciar o ciclo.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const mutateMachine = async (
+    machineId: LaundryMachineId,
+    body: { status: WashStatus } | { action: "release" },
+  ) => {
+    setBusyId(machineId);
+    setError(null);
+    try {
+      const response = await fetch(`/api/machines/${machineId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(body),
       });
-      const payload = (await response.json()) as { wash?: Wash; error?: string };
-      if (!response.ok || !payload.wash) throw new Error(payload.error || "Falha ao atualizar.");
-      setWashes((current) =>
-        current
-          .map((wash) => (wash.id === id ? payload.wash! : wash))
-          .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)),
-      );
+      const payload = (await response.json()) as { machine?: LaundryMachine; error?: string };
+      if (!response.ok || !payload.machine) {
+        throw new Error(payload.error || "Falha ao atualizar a máquina.");
+      }
+      replaceMachine(payload.machine);
+      void loadDashboard(true);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Não foi possível atualizar o status.");
     } finally {
@@ -98,15 +145,17 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
     }
   };
 
-  const activeWashes = useMemo(
-    () => washes.filter((wash) => !["ready", "collected", "cancelled"].includes(wash.status)),
-    [washes],
+  const washers = useMemo(
+    () => machines.filter((machine) => machine.kind === "washer"),
+    [machines],
   );
-  const completedWashes = useMemo(
-    () => washes.filter((wash) => ["ready", "collected", "cancelled"].includes(wash.status)),
-    [washes],
+  const dryers = useMemo(() => machines.filter((machine) => machine.kind === "dryer"), [machines]);
+  const activeCount = machines.filter((machine) => machine.currentWash).length;
+  const availableCount = machines.length - activeCount;
+  const selectedMachine = machines.find((machine) => machine.id === selectedQrId);
+  const completedHistory = history.filter((wash) =>
+    ["collected", "cancelled"].includes(wash.status),
   );
-  const visibleWashes = showHistory ? completedWashes : activeWashes;
 
   return (
     <main className="container-page employee-page">
@@ -114,309 +163,319 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
         <div>
           <p className="eyebrow">Operação LavTudo</p>
           <h1>Painel do funcionário</h1>
-          <p>Crie lavagens e atualize cada etapa em tempo real para o celular do cliente.</p>
+          <p>Gerencie as oito máquinas e acompanhe cada ciclo em tempo real.</p>
         </div>
         <div className="heading-actions">
+          <button className="button ghost" type="button" onClick={() => void loadDashboard()}>
+            <RefreshCw size={17} /> Atualizar
+          </button>
           <button className="button ghost" type="button" onClick={() => void onLogout()}>
-            <LogOut size={17} />
-            Sair
+            <LogOut size={17} /> Sair
           </button>
         </div>
       </header>
 
-      <section className="dashboard-summary" aria-label="Resumo das lavagens">
-        <SummaryCard
-          label="Em acompanhamento"
-          value={activeWashes.length}
-          icon={<WashingMachine />}
-        />
-        <SummaryCard
-          label="Prontas ou encerradas"
-          value={completedWashes.length}
-          icon={<History />}
-        />
+      <section className="dashboard-summary" aria-label="Resumo das máquinas">
+        <SummaryCard label="Em operação" value={activeCount} icon={<WashingMachine />} />
+        <SummaryCard label="Disponíveis" value={availableCount} icon={<Play />} />
         <SummaryCard label="Armazenamento" value="Supabase" icon={<DatabaseZap />} textual />
-      </section>
-
-      <section className="equipment-section" aria-labelledby="equipment-title">
-        <div className="section-title-row">
-          <div>
-            <p className="eyebrow">Equipamentos</p>
-            <h2 id="equipment-title">Visão rápida das máquinas</h2>
-          </div>
-          <span>{DEFAULT_MACHINES.length} equipamentos</span>
-        </div>
-        <div className="equipment-grid">
-          {DEFAULT_MACHINES.map((machine) => {
-            const assignedWash = activeWashes.find((wash) => wash.machineLabel === machine.name);
-            return (
-              <article className="glass equipment-card" key={machine.id}>
-                <span className="equipment-icon" aria-hidden="true">
-                  <WashingMachine size={21} />
-                </span>
-                <div>
-                  <strong>{machine.name}</strong>
-                  <span>{machine.type === "washer" ? "Lavadora" : "Secadora"}</span>
-                </div>
-                <span className={`equipment-state ${assignedWash ? "busy" : "available"}`}>
-                  {assignedWash ? `Lavagem #${assignedWash.id}` : "Disponível"}
-                </span>
-              </article>
-            );
-          })}
-        </div>
       </section>
 
       {error && (
         <div className="notice danger" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={() => void loadWashes()}>
+          <button type="button" onClick={() => void loadDashboard()}>
             Tentar novamente
           </button>
         </div>
       )}
 
-      <CreateWashCard
-        onCreated={(wash) => {
-          setWashes((current) => [wash, ...current]);
-          setSelectedQrId(wash.id);
-          setShowHistory(false);
-        }}
-      />
+      {loading ? (
+        <div className="machine-admin-grid" aria-label="Carregando máquinas">
+          {Array.from({ length: 4 }, (_, index) => (
+            <div className="glass skeleton-panel" key={index} />
+          ))}
+        </div>
+      ) : (
+        <>
+          <MachineGroup
+            title="Lavadoras"
+            icon={<WashingMachine size={22} />}
+            machines={washers}
+            busyId={busyId}
+            startMachineId={startMachineId}
+            onStartOpen={setStartMachineId}
+            onStart={startWash}
+            onStatus={(machineId, status) => void mutateMachine(machineId, { status })}
+            onRelease={(machineId) => void mutateMachine(machineId, { action: "release" })}
+            onQr={setSelectedQrId}
+          />
+          <MachineGroup
+            title="Secadoras"
+            icon={<Wind size={22} />}
+            machines={dryers}
+            busyId={busyId}
+            startMachineId={startMachineId}
+            onStartOpen={setStartMachineId}
+            onStart={startWash}
+            onStatus={(machineId, status) => void mutateMachine(machineId, { status })}
+            onRelease={(machineId) => void mutateMachine(machineId, { action: "release" })}
+            onQr={setSelectedQrId}
+          />
+        </>
+      )}
 
-      {selectedQrId && (
-        <section className="glass selected-access-card" aria-label="Acesso da nova lavagem">
-          <TrackingAccessCard washId={selectedQrId} />
+      {selectedMachine && (
+        <section
+          className="glass selected-access-card"
+          aria-label={`QR Code da ${selectedMachine.label}`}
+        >
+          <MachineAccessCard machineId={selectedMachine.id} machineLabel={selectedMachine.label} />
           <button className="close-text-button" type="button" onClick={() => setSelectedQrId(null)}>
             Fechar
           </button>
         </section>
       )}
 
-      <div className="list-toolbar">
-        <div className="segmented-control" aria-label="Filtrar lavagens">
-          <button
-            type="button"
-            className={!showHistory ? "active" : ""}
-            onClick={() => setShowHistory(false)}
-          >
-            Em andamento <span>{activeWashes.length}</span>
-          </button>
-          <button
-            type="button"
-            className={showHistory ? "active" : ""}
-            onClick={() => setShowHistory(true)}
-          >
-            Histórico <span>{completedWashes.length}</span>
-          </button>
+      <section className="admin-history-section" aria-labelledby="admin-history-title">
+        <div className="section-title-row">
+          <div>
+            <p className="eyebrow">Registro operacional</p>
+            <h2 id="admin-history-title">Histórico de ciclos</h2>
+          </div>
+          <span>{completedHistory.length} encerrados</span>
         </div>
-        <button className="button ghost small" type="button" onClick={() => void loadWashes()}>
-          <RefreshCw size={16} />
-          Atualizar
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="staff-wash-list" aria-label="Carregando lavagens">
-          <div className="glass skeleton-panel" />
-          <div className="glass skeleton-panel" />
-        </div>
-      ) : visibleWashes.length === 0 ? (
-        <section className="glass empty-state">
-          <WashingMachine size={36} aria-hidden="true" />
-          <h2>{showHistory ? "Nenhuma lavagem encerrada" : "Nenhuma lavagem ativa"}</h2>
-          <p>{showHistory ? "O histórico aparecerá aqui." : "Crie uma lavagem para começar."}</p>
-        </section>
-      ) : (
-        <div className="staff-wash-list">
-          {visibleWashes.map((wash) => (
-            <article className="glass staff-wash-card" key={wash.id}>
-              <div className="staff-wash-head">
+        {completedHistory.length === 0 ? (
+          <div className="glass empty-state compact-empty">
+            <History size={28} />
+            <p>Os ciclos liberados aparecerão aqui.</p>
+          </div>
+        ) : (
+          <div className="history-table glass">
+            {completedHistory.slice(0, 12).map((wash) => (
+              <div className="history-table-row" key={wash.id}>
                 <div>
-                  <p className="eyebrow">Lavagem #{wash.id}</p>
-                  <h2>{wash.customerName}</h2>
-                  <p>
-                    {wash.machineLabel} ·{" "}
-                    {wash.serviceType === "wash-dry" ? "Lavagem e secagem" : "Lavagem"}
-                  </p>
+                  <strong>{wash.machineLabel}</strong>
+                  <span>
+                    Ciclo #{wash.id} · {SERVICE_LABEL[wash.serviceType]}
+                  </span>
                 </div>
-                <span className={`status-chip status-${wash.status}`}>
-                  {STATUS_SHORT_LABEL[wash.status]}
-                </span>
+                <span>{STATUS_SHORT_LABEL[wash.status]}</span>
+                <time dateTime={wash.updatedAt}>{formatWashDate(wash.updatedAt, true)}</time>
               </div>
-
-              <div className="wash-meta-row">
-                <span>Criada {formatWashDate(wash.createdAt, true)}</span>
-                <span>Atualizada {formatWashDate(wash.updatedAt)}</span>
-              </div>
-
-              {!showHistory && (
-                <StatusControls
-                  wash={wash}
-                  busy={busyId === wash.id}
-                  onStatus={(status) => void mutateWash(wash.id, { status })}
-                />
-              )}
-
-              <div className="staff-card-footer">
-                <button
-                  className="button secondary small"
-                  type="button"
-                  onClick={() =>
-                    setSelectedQrId((current) => (current === wash.id ? null : wash.id))
-                  }
-                >
-                  <QrCode size={16} />
-                  QR Code e NFC
-                </button>
-                {!showHistory && (
-                  <button
-                    className="button ghost small"
-                    type="button"
-                    onClick={() => void mutateWash(wash.id, { action: "reset" })}
-                    disabled={busyId === wash.id}
-                  >
-                    <RefreshCw size={16} />
-                    Resetar
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }
 
-function CreateWashCard({ onCreated }: { onCreated: (wash: Wash) => void }) {
-  const [form, setForm] = useState<WashCreateInput>({
-    customerName: "",
-    machineLabel: "Lavadora 01",
-    serviceType: "wash-dry",
-    estimatedMinutes: 45,
-  });
-  const [open, setOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/washes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(form),
-      });
-      const body = (await response.json()) as { wash?: Wash; error?: string };
-      if (!response.ok || !body.wash) throw new Error(body.error || "Falha ao criar lavagem.");
-      onCreated(body.wash);
-      setForm((current) => ({ ...current, customerName: "" }));
-      setOpen(false);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Não foi possível criar a lavagem.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+function MachineGroup({
+  title,
+  icon,
+  machines,
+  busyId,
+  startMachineId,
+  onStartOpen,
+  onStart,
+  onStatus,
+  onRelease,
+  onQr,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  machines: LaundryMachine[];
+  busyId: LaundryMachineId | null;
+  startMachineId: LaundryMachineId | null;
+  onStartOpen: (id: LaundryMachineId | null) => void;
+  onStart: (id: LaundryMachineId, input: WashCreateInput) => Promise<void>;
+  onStatus: (id: LaundryMachineId, status: WashStatus) => void;
+  onRelease: (id: LaundryMachineId) => void;
+  onQr: (id: LaundryMachineId) => void;
+}) {
   return (
-    <section className={`glass create-wash-card ${open ? "open" : ""}`}>
-      <button
-        className="create-wash-toggle"
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className="create-wash-icon">
-          <Plus size={20} />
-        </span>
-        <span>
-          <strong>Nova lavagem</strong>
-          <small>Gere um identificador, QR Code e URL únicos</small>
-        </span>
-        <span aria-hidden="true">{open ? "−" : "+"}</span>
-      </button>
+    <section className="machine-group" aria-labelledby={`group-${machines[0]?.kind}`}>
+      <div className="machine-group-title">
+        <span aria-hidden="true">{icon}</span>
+        <div>
+          <p className="eyebrow">Equipamentos permanentes</p>
+          <h2 id={`group-${machines[0]?.kind}`}>{title}</h2>
+        </div>
+      </div>
+      <div className="machine-admin-grid">
+        {machines.map((machine) => {
+          const wash = machine.currentWash;
+          const remaining = wash ? remainingMinutesForWash(wash) : null;
+          return (
+            <article
+              className={`glass machine-admin-card ${wash ? "is-busy" : "is-available"}`}
+              key={machine.id}
+            >
+              <header>
+                <div>
+                  <span className="machine-permanent-id">{machine.id}</span>
+                  <h3>{machine.label}</h3>
+                </div>
+                <span
+                  className={`machine-state-pill ${wash ? `status-${wash.status}` : "status-available"}`}
+                >
+                  {wash ? STATUS_SHORT_LABEL[wash.status] : "Disponível"}
+                </span>
+              </header>
 
-      {open && (
-        <form className="create-wash-form" onSubmit={submit}>
-          <div className="form-field">
-            <label htmlFor="customer-name">Nome do cliente</label>
-            <input
-              id="customer-name"
-              value={form.customerName}
-              onChange={(event) => setForm({ ...form, customerName: event.target.value })}
-              placeholder="Ex.: Maria Silva"
-              minLength={2}
-              maxLength={80}
-              required
-              autoFocus
-            />
-          </div>
-          <div className="form-field">
-            <label htmlFor="machine-label">Equipamento</label>
-            <select
-              id="machine-label"
-              value={form.machineLabel}
-              onChange={(event) => setForm({ ...form, machineLabel: event.target.value })}
-              required
-            >
-              {DEFAULT_MACHINES.map((machine) => (
-                <option value={machine.name} key={machine.id}>
-                  {machine.name} — {machine.type === "washer" ? "Lavadora" : "Secadora"}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor="service-type">Serviço</label>
-            <select
-              id="service-type"
-              value={form.serviceType}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  serviceType: event.target.value as WashCreateInput["serviceType"],
-                })
-              }
-            >
-              <option value="wash-dry">Lavagem e secagem</option>
-              <option value="wash">Somente lavagem</option>
-            </select>
-          </div>
-          <div className="form-field">
-            <label htmlFor="estimated-minutes">Previsão (minutos)</label>
-            <input
-              id="estimated-minutes"
-              type="number"
-              min={5}
-              max={240}
-              value={form.estimatedMinutes}
-              onChange={(event) =>
-                setForm({ ...form, estimatedMinutes: Number(event.target.value) })
-              }
-              required
-            />
-          </div>
-          {error && (
-            <div className="notice danger form-notice" role="alert">
-              {error}
-            </div>
-          )}
-          <div className="form-actions">
-            <button className="button ghost" type="button" onClick={() => setOpen(false)}>
-              Cancelar
-            </button>
-            <button className="button primary" type="submit" disabled={submitting}>
-              <Plus size={17} />
-              {submitting ? "Criando…" : "Criar e gerar QR Code"}
-            </button>
-          </div>
-        </form>
-      )}
+              {wash ? (
+                <div className="machine-current-cycle">
+                  <div>
+                    <span>Ciclo atual</span>
+                    <strong>#{wash.id}</strong>
+                  </div>
+                  <div>
+                    <span>Tempo restante</span>
+                    <strong>{wash.status === "ready" ? "Pronta" : `${remaining ?? 0} min`}</strong>
+                  </div>
+                  <div>
+                    <span>Início</span>
+                    <strong>{formatWashDate(wash.startedAt)}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div className="machine-available-message">
+                  <CheckCircle2 size={23} aria-hidden="true" />
+                  <div>
+                    <strong>Pronta para uso</strong>
+                    <span>Nenhum ciclo associado.</span>
+                  </div>
+                </div>
+              )}
+
+              {wash && (
+                <StatusControls
+                  machine={machine}
+                  busy={busyId === machine.id}
+                  onStatus={(status) => onStatus(machine.id, status)}
+                  onRelease={() => onRelease(machine.id)}
+                />
+              )}
+
+              {startMachineId === machine.id && !wash && (
+                <StartCycleForm
+                  machine={machine}
+                  busy={busyId === machine.id}
+                  onCancel={() => onStartOpen(null)}
+                  onStart={(input) => onStart(machine.id, input)}
+                />
+              )}
+
+              <footer>
+                {!wash && startMachineId !== machine.id && (
+                  <button
+                    className="button primary small"
+                    type="button"
+                    onClick={() => onStartOpen(machine.id)}
+                  >
+                    <Play size={16} /> Nova {machine.kind === "washer" ? "lavagem" : "secagem"}
+                  </button>
+                )}
+                <button
+                  className="button ghost small"
+                  type="button"
+                  onClick={() => onQr(machine.id)}
+                >
+                  <QrCode size={16} /> Ver QR fixo
+                </button>
+              </footer>
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
+}
+
+function StartCycleForm({
+  machine,
+  busy,
+  onCancel,
+  onStart,
+}: {
+  machine: LaundryMachine;
+  busy: boolean;
+  onCancel: () => void;
+  onStart: (input: WashCreateInput) => Promise<void>;
+}) {
+  const initialService: WashServiceType = machine.kind === "dryer" ? "drying" : "standard";
+  const [serviceType, setServiceType] = useState<WashServiceType>(initialService);
+  const [estimatedMinutes, setEstimatedMinutes] = useState(machine.kind === "dryer" ? 30 : 45);
+  const [startedAt, setStartedAt] = useState(() => toLocalDateTime(new Date()));
+
+  return (
+    <form
+      className="start-cycle-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onStart({
+          serviceType,
+          estimatedMinutes,
+          startedAt: new Date(startedAt).toISOString(),
+        });
+      }}
+    >
+      <div className="form-field">
+        <label htmlFor={`service-${machine.id}`}>Tipo de ciclo</label>
+        <select
+          id={`service-${machine.id}`}
+          value={serviceType}
+          onChange={(event) => setServiceType(event.target.value as WashServiceType)}
+        >
+          {machine.kind === "dryer" ? (
+            <option value="drying">Secagem</option>
+          ) : (
+            <>
+              <option value="standard">Lavagem padrão</option>
+              <option value="delicate">Roupas delicadas</option>
+              <option value="heavy">Lavagem intensa</option>
+            </>
+          )}
+        </select>
+      </div>
+      <div className="form-field">
+        <label htmlFor={`duration-${machine.id}`}>Duração estimada</label>
+        <input
+          id={`duration-${machine.id}`}
+          type="number"
+          min={5}
+          max={240}
+          value={estimatedMinutes}
+          onChange={(event) => setEstimatedMinutes(Number(event.target.value))}
+          required
+        />
+      </div>
+      <div className="form-field full-row">
+        <label htmlFor={`start-${machine.id}`}>Horário de início</label>
+        <input
+          id={`start-${machine.id}`}
+          type="datetime-local"
+          value={startedAt}
+          onChange={(event) => setStartedAt(event.target.value)}
+          required
+        />
+      </div>
+      <div className="form-actions compact-actions">
+        <button className="button ghost small" type="button" onClick={onCancel}>
+          Cancelar
+        </button>
+        <button className="button primary small" type="submit" disabled={busy}>
+          <Play size={15} /> {busy ? "Iniciando…" : "Iniciar ciclo"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function toLocalDateTime(date: Date): string {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
 function SummaryCard({

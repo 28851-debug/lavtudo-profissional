@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Wash } from "@/lib/washes";
+import type { LaundryMachine, LaundryMachineId } from "@/lib/washes";
 
 type PollingState = {
-  wash: Wash | null;
+  machine: LaundryMachine | null;
   loading: boolean;
   refreshing: boolean;
   error: string | null;
 };
 
-export function useWashPolling(id: string, intervalMs = 1000) {
+export function useMachinePolling(id: LaundryMachineId, intervalMs = 1000) {
   const [retryKey, setRetryKey] = useState(0);
   const [state, setState] = useState<PollingState>({
-    wash: null,
+    machine: null,
     loading: true,
     refreshing: false,
     error: null,
@@ -24,20 +24,20 @@ export function useWashPolling(id: string, intervalMs = 1000) {
 
     const poll = async () => {
       controller = new AbortController();
-      setState((current) => ({ ...current, refreshing: current.wash !== null }));
+      setState((current) => ({ ...current, refreshing: current.machine !== null }));
 
       try {
-        const response = await fetch(`/api/washes/${encodeURIComponent(id)}`, {
+        const response = await fetch(`/api/machines/${encodeURIComponent(id)}`, {
           cache: "no-store",
           signal: controller.signal,
           headers: { Accept: "application/json" },
         });
-        const body = (await response.json()) as { wash?: Wash; error?: string };
-        if (!response.ok || !body.wash) {
-          throw new Error(body.error || "Não foi possível consultar esta lavagem.");
+        const body = (await response.json()) as { machine?: LaundryMachine; error?: string };
+        if (!response.ok || !body.machine) {
+          throw new Error(body.error || "Não foi possível consultar esta máquina.");
         }
         if (!stopped) {
-          setState({ wash: body.wash, loading: false, refreshing: false, error: null });
+          setState({ machine: body.machine, loading: false, refreshing: false, error: null });
         }
       } catch (error) {
         if (!stopped && !(error instanceof DOMException && error.name === "AbortError")) {
@@ -62,7 +62,7 @@ export function useWashPolling(id: string, intervalMs = 1000) {
   }, [id, intervalMs, retryKey]);
 
   const retry = useCallback(() => {
-    setState((current) => ({ ...current, loading: current.wash === null, error: null }));
+    setState((current) => ({ ...current, loading: current.machine === null, error: null }));
     setRetryKey((value) => value + 1);
   }, []);
 

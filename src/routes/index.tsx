@@ -82,10 +82,10 @@ function Index() {
             <div className="home-pill">
               <Sparkles size={16} /> Lavanderia express · 24 horas
             </div>
-            <h1>Deixe suas roupas. Acompanhe de onde estiver.</h1>
+            <h1>Saiba quando sua roupa está pronta.</h1>
             <p>
-              Enquanto cuidamos de cada peça, você acompanha lavagem, enxágue, centrifugação e
-              secagem pelo celular — sem precisar permanecer na lavanderia.
+              Aponte a câmera para o QR Code da máquina ou aproxime o celular da etiqueta NFC. Você
+              acompanha cada etapa ao vivo e volta na hora certa.
             </p>
             <div className="home-actions">
               <Link to="/scan" className="home-button primary">
@@ -97,7 +97,7 @@ function Index() {
             </div>
             <div className="home-trust-row">
               <span>
-                <ShieldCheck size={17} /> Identificador único
+                <ShieldCheck size={17} /> Acesso permanente da máquina
               </span>
               <span>
                 <Clock3 size={17} /> Atualização em tempo real
@@ -109,19 +109,50 @@ function Index() {
           </div>
           <div className="home-hero-visual">
             <div className="hero-glow" />
-            <div className="washer-stage">
-              <img
-                src="/lavadora-realista.webp"
-                alt="Máquina de lavar frontal moderna em funcionamento"
-                fetchPriority="high"
-              />
-              <span className="washer-drum-motion" aria-hidden="true" />
+            <div
+              className="phone-showcase"
+              role="img"
+              aria-label="Exemplo do acompanhamento no celular"
+            >
+              <div className="phone-frame">
+                <span className="phone-speaker" aria-hidden="true" />
+                <div className="phone-screen">
+                  <div className="phone-brand">
+                    <img src="/lavtudo-logo.webp" alt="" aria-hidden="true" />
+                    <span>LavTudo</span>
+                  </div>
+                  <p>Acompanhamento ao vivo</p>
+                  <h2>Lavadora 01</h2>
+                  <div className="phone-status-chip">
+                    <span /> Lavagem em andamento
+                  </div>
+                  <div className="phone-time">
+                    <strong>32</strong>
+                    <span>minutos restantes</span>
+                  </div>
+                  <div className="phone-progress">
+                    <span />
+                  </div>
+                  <div className="phone-progress-labels">
+                    <span>Início</span>
+                    <strong>72%</strong>
+                    <span>Pronta</span>
+                  </div>
+                  <div className="phone-next-step">
+                    <Clock3 size={17} />
+                    <div>
+                      <span>Próxima etapa</span>
+                      <strong>Enxágue</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="floating-status status-one">
-              <span /> Lavagem em andamento
+              <QrCode size={18} /> QR fixo da máquina
             </div>
             <div className="floating-status status-two">
-              <CheckCircle2 size={18} /> Atualização no celular
+              <CheckCircle2 size={18} /> Status sincronizado
             </div>
           </div>
         </section>
@@ -158,8 +189,8 @@ function Index() {
               </div>
               <h3>Acesso imediato</h3>
               <p>
-                Cada lavagem recebe uma URL própria, disponível no QR Code e pronta para uma
-                etiqueta NFC.
+                Cada máquina possui uma URL permanente, usada pelo mesmo QR Code e pela etiqueta NFC
+                em todos os ciclos.
               </p>
             </article>
             <article className="feature-card">
@@ -178,8 +209,8 @@ function Index() {
               </div>
               <h3>Painel operacional</h3>
               <p>
-                A equipe cria pedidos, controla etapas, consulta histórico e compartilha o
-                acompanhamento.
+                A equipe inicia ciclos, controla etapas, consulta o histórico e visualiza o QR
+                permanente de cada máquina.
               </p>
             </article>
           </div>
@@ -212,7 +243,7 @@ function Index() {
         <section className="home-final-cta">
           <div>
             <p className="eyebrow">Já deixou suas roupas?</p>
-            <h2>Acompanhe agora pelo número da lavagem.</h2>
+            <h2>Escaneie o QR Code da máquina e acompanhe em tempo real.</h2>
           </div>
           <Link to="/scan" className="home-button primary">
             Abrir acompanhamento <ArrowRight size={18} />

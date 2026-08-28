@@ -10,39 +10,51 @@ import {
   WashingMachine,
 } from "lucide-react";
 import { Nav } from "@/components/Nav";
-import { useWashPolling } from "@/hooks/use-wash-polling";
+import { useMachinePolling } from "@/hooks/use-machine-polling";
 import {
   CUSTOMER_STATUS_MESSAGE,
+  LAUNDRY_MACHINES,
+  SERVICE_LABEL,
   STATUS_LABEL,
   STATUS_SHORT_LABEL,
-  TRACKING_STAGES,
   formatWashDate,
+  isLaundryMachineId,
   progressForStatus,
+  remainingMinutesForWash,
+  stagesForMachine,
+  type LaundryMachine,
+  type LaundryMachineId,
   type Wash,
 } from "@/lib/washes";
 import "@/styles/app.css";
 
-export const Route = createFileRoute("/acompanhar/$washId")({
+export const Route = createFileRoute("/acompanhar/$machineId")({
   beforeLoad: ({ params }) => {
-    if (!/^\d{1,12}$/u.test(params.washId)) throw notFound();
+    if (!isLaundryMachineId(params.machineId)) throw notFound();
   },
-  head: ({ params }) => ({
-    meta: [
-      { title: `Lavagem #${params.washId} — LavTudo` },
-      {
-        name: "description",
-        content: `Acompanhe em tempo real o status da lavagem #${params.washId} na LavTudo.`,
-      },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
+  head: ({ params }) => {
+    const machine = LAUNDRY_MACHINES.find((item) => item.id === params.machineId);
+    const label = machine?.label || "Máquina";
+    return {
+      meta: [
+        { title: `${label} — Acompanhamento LavTudo` },
+        {
+          name: "description",
+          content: `Acompanhe em tempo real o ciclo da ${label} na LavTudo.`,
+        },
+        { name: "robots", content: "noindex, nofollow" },
+      ],
+    };
+  },
   component: TrackingPage,
   notFoundComponent: TrackingNotFound,
 });
 
 function TrackingPage() {
-  const { washId } = Route.useParams();
-  const { wash, loading, refreshing, error, retry } = useWashPolling(washId);
+  const { machineId } = Route.useParams();
+  const { machine, loading, refreshing, error, retry } = useMachinePolling(
+    machineId as LaundryMachineId,
+  );
 
   return (
     <div className="lav-shell tracking-shell">
@@ -58,54 +70,82 @@ function TrackingPage() {
           </div>
         </div>
 
-        {loading && !wash ? (
+        {loading && !machine ? (
           <TrackingSkeleton />
-        ) : !wash ? (
-          <TrackingError message={error || "Lavagem não encontrada."} onRetry={retry} />
+        ) : !machine ? (
+          <TrackingError message={error || "Máquina não encontrada."} onRetry={retry} />
+        ) : machine.currentWash ? (
+          <TrackingContent
+            machine={machine}
+            wash={machine.currentWash}
+            transientError={error}
+            onRetry={retry}
+          />
         ) : (
-          <TrackingContent wash={wash} transientError={error} onRetry={retry} />
+          <AvailableMachine machine={machine} transientError={error} onRetry={retry} />
         )}
       </main>
     </div>
   );
 }
 
+function AvailableMachine({
+  machine,
+  transientError,
+  onRetry,
+}: {
+  machine: LaundryMachine;
+  transientError: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      {transientError && <ReconnectNotice onRetry={onRetry} />}
+      <section className="glass customer-status-card is-available" aria-live="polite">
+        <div className="order-number-row">
+          <div>
+            <p className="eyebrow">Acompanhamento da máquina</p>
+            <h1>{machine.label}</h1>
+          </div>
+          <span className="status-chip status-available">Disponível</span>
+        </div>
+        <div className="status-hero-icon" aria-hidden="true">
+          <CheckCircle2 size={48} />
+        </div>
+        <p className="customer-status-label">Máquina disponível</p>
+        <h2>Nenhuma lavagem em andamento no momento.</h2>
+        <p className="available-machine-copy">
+          Use o mesmo QR Code ou cartão NFC quando esta máquina estiver em operação.
+        </p>
+      </section>
+    </>
+  );
+}
+
 function TrackingContent({
+  machine,
   wash,
   transientError,
   onRetry,
 }: {
+  machine: LaundryMachine;
   wash: Wash;
   transientError: string | null;
   onRetry: () => void;
 }) {
-  const progress = progressForStatus(wash.status);
-  const currentStageIndex = TRACKING_STAGES.indexOf(wash.status);
-  const complete = wash.status === "ready" || wash.status === "collected";
+  const stages = stagesForMachine(machine.kind);
+  const progress = progressForStatus(wash.status, machine.kind);
+  const currentStageIndex = stages.indexOf(wash.status);
+  const complete = wash.status === "ready";
   const exceptional = wash.status === "cancelled";
-  const estimatedReady =
-    wash.startedAt && !wash.readyAt
-      ? new Date(new Date(wash.startedAt).getTime() + wash.estimatedMinutes * 60_000).toISOString()
-      : wash.readyAt;
-  const remainingMinutes =
-    estimatedReady && !complete
-      ? Math.min(
-          wash.estimatedMinutes,
-          Math.max(0, Math.ceil((new Date(estimatedReady).getTime() - Date.now()) / 60_000)),
-        )
-      : null;
+  const estimatedReady = wash.startedAt
+    ? new Date(new Date(wash.startedAt).getTime() + wash.estimatedMinutes * 60_000).toISOString()
+    : null;
+  const remainingMinutes = remainingMinutesForWash(wash);
 
   return (
     <>
-      {transientError && (
-        <div className="notice warning reconnect-notice" role="status">
-          <AlertCircle size={18} />
-          <span>Exibindo a última atualização. Tentando reconectar…</span>
-          <button type="button" onClick={onRetry}>
-            Tentar agora
-          </button>
-        </div>
-      )}
+      {transientError && <ReconnectNotice onRetry={onRetry} />}
 
       <section
         className={`glass customer-status-card ${complete ? "is-ready" : ""} ${exceptional ? "is-cancelled" : ""}`}
@@ -114,8 +154,9 @@ function TrackingContent({
       >
         <div className="order-number-row">
           <div>
-            <p className="eyebrow">Acompanhamento da lavagem</p>
-            <h1>Lavagem #{wash.id}</h1>
+            <p className="eyebrow">Acompanhamento da máquina</p>
+            <h1>{machine.label}</h1>
+            <span className="current-wash-id">Ciclo atual #{wash.id}</span>
           </div>
           <span className={`status-chip status-${wash.status}`}>
             {STATUS_SHORT_LABEL[wash.status]}
@@ -135,14 +176,14 @@ function TrackingContent({
               <strong>
                 {complete
                   ? "Disponível para retirada"
-                  : wash.status === "waiting"
-                    ? `${wash.estimatedMinutes} minutos previstos`
-                    : `${remainingMinutes ?? 0} minutos restantes`}
+                  : `${remainingMinutes ?? 0} minutos restantes`}
               </strong>
               <span>
                 {estimatedReady
-                  ? `${complete ? "Finalizada" : "Previsão de término"}: ${formatWashDate(estimatedReady)}`
-                  : "A previsão começa assim que a equipe iniciar a lavagem."}
+                  ? `${complete ? "Finalizada" : "Previsão de término"}: ${formatWashDate(
+                      complete ? wash.readyAt : estimatedReady,
+                    )}`
+                  : "A previsão será exibida assim que o ciclo começar."}
               </span>
             </div>
           </div>
@@ -157,7 +198,7 @@ function TrackingContent({
             <div
               className="tracking-progress"
               role="progressbar"
-              aria-label="Progresso da lavagem"
+              aria-label="Progresso do ciclo"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={progress}
@@ -174,20 +215,16 @@ function TrackingContent({
         <section className="glass detail-card" aria-labelledby="details-title">
           <div className="section-heading">
             <WashingMachine size={21} aria-hidden="true" />
-            <h2 id="details-title">Detalhes</h2>
+            <h2 id="details-title">Detalhes do ciclo</h2>
           </div>
           <dl className="detail-list">
             <div>
-              <dt>Cliente</dt>
-              <dd>{wash.customerName}</dd>
-            </div>
-            <div>
-              <dt>Equipamento</dt>
-              <dd>{wash.machineLabel}</dd>
+              <dt>Máquina</dt>
+              <dd>{machine.label}</dd>
             </div>
             <div>
               <dt>Serviço</dt>
-              <dd>{wash.serviceType === "wash-dry" ? "Lavagem e secagem" : "Lavagem"}</dd>
+              <dd>{SERVICE_LABEL[wash.serviceType]}</dd>
             </div>
             <div>
               <dt>Início</dt>
@@ -195,7 +232,7 @@ function TrackingContent({
             </div>
             <div>
               <dt>{complete ? "Finalizada" : "Previsão"}</dt>
-              <dd>{formatWashDate(estimatedReady)}</dd>
+              <dd>{formatWashDate(complete ? wash.readyAt : estimatedReady)}</dd>
             </div>
             {!complete && remainingMinutes !== null && (
               <div>
@@ -209,10 +246,10 @@ function TrackingContent({
         <section className="glass timeline-card" aria-labelledby="steps-title">
           <div className="section-heading">
             <Clock3 size={21} aria-hidden="true" />
-            <h2 id="steps-title">Etapas da lavagem</h2>
+            <h2 id="steps-title">Etapas do ciclo</h2>
           </div>
-          <ol className="customer-timeline">
-            {TRACKING_STAGES.map((status, index) => {
+          <ol className={`customer-timeline stages-${stages.length}`}>
+            {stages.map((status, index) => {
               const done = complete || currentStageIndex > index;
               const current = currentStageIndex === index && !complete;
               return (
@@ -231,7 +268,7 @@ function TrackingContent({
       <section className="glass history-card" aria-labelledby="history-title">
         <div className="section-heading">
           <History size={21} aria-hidden="true" />
-          <h2 id="history-title">Histórico de atualizações</h2>
+          <h2 id="history-title">Histórico deste ciclo</h2>
         </div>
         <ol className="history-list">
           {[...wash.history].reverse().map((entry) => (
@@ -246,6 +283,18 @@ function TrackingContent({
         </ol>
       </section>
     </>
+  );
+}
+
+function ReconnectNotice({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="notice warning reconnect-notice" role="status">
+      <AlertCircle size={18} />
+      <span>Exibindo a última atualização. Tentando reconectar…</span>
+      <button type="button" onClick={onRetry}>
+        Tentar agora
+      </button>
+    </div>
   );
 }
 
@@ -269,7 +318,7 @@ function TrackingNotFound() {
       <Nav compact />
       <main className="container-page">
         <TrackingError
-          message="O identificador informado não é válido."
+          message="Esta URL não corresponde a uma máquina LavTudo."
           onRetry={() => location.assign("/scan")}
         />
       </main>

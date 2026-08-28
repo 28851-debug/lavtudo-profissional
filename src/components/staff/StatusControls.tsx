@@ -1,8 +1,8 @@
-import { CheckCircle2, Gauge, Play, RotateCcw, Waves, Wind } from "lucide-react";
+import { CheckCircle2, Gauge, PackageCheck, Play, Waves, Wind } from "lucide-react";
 import {
-  STAFF_CONTROL_STATUSES,
   STATUS_SHORT_LABEL,
-  type Wash,
+  stagesForMachine,
+  type LaundryMachine,
   type WashStatus,
 } from "@/lib/washes";
 
@@ -15,19 +15,23 @@ const ICONS: Partial<Record<WashStatus, React.ReactNode>> = {
 };
 
 export function StatusControls({
-  wash,
+  machine,
   busy,
   onStatus,
-  onReset,
+  onRelease,
 }: {
-  wash: Wash;
+  machine: LaundryMachine;
   busy: boolean;
   onStatus: (status: WashStatus) => void;
-  onReset?: () => void;
+  onRelease: () => void;
 }) {
+  const wash = machine.currentWash;
+  if (!wash) return null;
+  const statuses = stagesForMachine(machine.kind);
+
   return (
     <div className="status-controls">
-      {STAFF_CONTROL_STATUSES.map((status) => (
+      {statuses.map((status) => (
         <button
           key={status}
           className={`stage-button ${wash.status === status ? "active" : ""} ${status === "ready" ? "success" : ""}`}
@@ -39,17 +43,17 @@ export function StatusControls({
           {ICONS[status]}
           <span>
             {status === "washing"
-              ? "Iniciar lavagem"
+              ? "Lavagem"
               : status === "ready"
                 ? "Finalizar"
                 : STATUS_SHORT_LABEL[status]}
           </span>
         </button>
       ))}
-      {onReset && (
-        <button className="stage-button reset" type="button" onClick={onReset} disabled={busy}>
-          <RotateCcw size={18} />
-          <span>Voltar para aguardando</span>
+      {wash.status === "ready" && (
+        <button className="stage-button release" type="button" onClick={onRelease} disabled={busy}>
+          <PackageCheck size={18} />
+          <span>Liberar máquina</span>
         </button>
       )}
     </div>

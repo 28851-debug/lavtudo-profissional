@@ -1,22 +1,23 @@
 # LavTudo
 
-Aplicação comercial da LavTudo Lavanderia Express para acompanhamento de lavagens em tempo real. O funcionário controla as etapas no painel e o cliente acompanha a mesma lavagem pelo celular usando uma URL única, QR Code ou etiqueta NFC.
+Aplicação comercial da LavTudo Lavanderia Express para acompanhamento de ciclos em tempo real. O funcionário controla as etapas no painel e o cliente acompanha a máquina pelo celular usando o QR Code permanente ou a etiqueta NFC do equipamento.
 
 ## Fluxo principal
 
-1. O funcionário cria uma lavagem e recebe um identificador numérico.
-2. O sistema gera a URL `/acompanhar/:id` e um QR Code para essa URL.
-3. A mesma URL pode ser gravada em uma etiqueta NFC como registro NDEF URI.
-4. O painel altera o estado persistido no Supabase.
-5. A tela pública consulta a API periodicamente e exibe status, tempo previsto e histórico.
+1. A lavanderia possui quatro lavadoras e quatro secadoras cadastradas permanentemente.
+2. Cada máquina tem uma URL fixa, como `/acompanhar/lavadora-01`.
+3. O QR Code impresso e a etiqueta NFC usam essa mesma URL em todos os ciclos.
+4. O funcionário inicia e atualiza o ciclo da máquina no painel autenticado.
+5. O estado real é persistido no Supabase e a tela pública exibe as mudanças automaticamente.
+6. Quando a roupa é retirada, o funcionário libera a máquina para um novo ciclo sem alterar sua URL.
 
 Rotas principais:
 
 - `/` — página institucional;
-- `/scan` — leitura de QR Code, NFC e entrada manual do identificador;
-- `/acompanhar/1024` — acompanhamento público de uma lavagem;
+- `/scan` — leitura do QR Code ou da etiqueta NFC da máquina;
+- `/acompanhar/lavadora-01` até `/acompanhar/lavadora-04` — lavadoras;
+- `/acompanhar/secadora-01` até `/acompanhar/secadora-04` — secadoras;
 - `/admin` — painel autenticado do funcionário;
-- `/maq1`, `/maq2`, `/sec1` e `/sec2` — telas operacionais legadas preservadas.
 
 ## Stack
 
@@ -26,7 +27,7 @@ Rotas principais:
 - validação de entradas com Zod;
 - QR Code em SVG com `qrcode.react`;
 - PostgreSQL no Supabase com RLS e histórico persistente;
-- sincronização entre painel e cliente por polling.
+- sincronização entre painel e cliente por polling curto e tolerante a falhas.
 
 Nenhum segredo é incluído no bundle do frontend. Variáveis sem o prefixo `VITE_` são lidas somente no servidor.
 
