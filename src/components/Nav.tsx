@@ -23,11 +23,11 @@ export function Nav({ compact = false }: { compact?: boolean }) {
         <Link
           to="/scan"
           className="lav-nav-link"
-          aria-label="Acompanhar lavagem"
+          aria-label="Ler cartão NFC ou QR Code para acompanhar lavagem"
           activeProps={{ className: "lav-nav-link active" }}
         >
           <QrCode size={17} aria-hidden="true" />
-          <span className="nav-link-label">Acompanhar</span>
+          <span className="nav-link-label">Ler cartão</span>
         </Link>
       </div>
     </nav>
