@@ -123,7 +123,13 @@ export function isLaundryMachineId(value: unknown): value is LaundryMachineId {
   return typeof value === "string" && MACHINE_IDS.includes(value as LaundryMachineId);
 }
 
-export function stagesForMachine(kind: LaundryMachineKind): WashStatus[] {
+export function stagesForMachine(
+  kind: LaundryMachineKind,
+  machineId?: LaundryMachineId,
+): WashStatus[] {
+  if (machineId === "lavadora-01") {
+    return ["washing", "rinsing", "spinning", "drying", "ready"];
+  }
   return kind === "washer" ? WASHER_CONTROL_STATUSES : DRYER_CONTROL_STATUSES;
 }
 

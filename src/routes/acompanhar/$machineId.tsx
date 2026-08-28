@@ -133,7 +133,7 @@ function TrackingContent({
   transientError: string | null;
   onRetry: () => void;
 }) {
-  const stages = stagesForMachine(machine.kind);
+  const stages = stagesForMachine(machine.kind, machine.id);
   const progress = progressForStatus(wash.status, machine.kind);
   const currentStageIndex = stages.indexOf(wash.status);
   const complete = wash.status === "ready";
