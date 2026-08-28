@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScanRouteImport } from './routes/scan'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiWashesRouteImport } from './routes/api/washes'
@@ -23,6 +24,11 @@ import { Route as ApiMachinesMachineIdRouteImport } from './routes/api/machines/
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -74,6 +80,7 @@ const ApiMachinesMachineIdRoute = ApiMachinesMachineIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/demo': typeof DemoRoute
   '/scan': typeof ScanRoute
   '/acompanhar/$machineId': typeof AcompanharMachineIdRoute
   '/api/health': typeof ApiHealthRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/demo': typeof DemoRoute
   '/scan': typeof ScanRoute
   '/acompanhar/$machineId': typeof AcompanharMachineIdRoute
   '/api/health': typeof ApiHealthRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/demo': typeof DemoRoute
   '/scan': typeof ScanRoute
   '/acompanhar/$machineId': typeof AcompanharMachineIdRoute
   '/api/health': typeof ApiHealthRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/demo'
     | '/scan'
     | '/acompanhar/$machineId'
     | '/api/health'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/demo'
     | '/scan'
     | '/acompanhar/$machineId'
     | '/api/health'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/demo'
     | '/scan'
     | '/acompanhar/$machineId'
     | '/api/health'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  DemoRoute: typeof DemoRoute
   ScanRoute: typeof ScanRoute
   AcompanharMachineIdRoute: typeof AcompanharMachineIdRoute
   ApiHealthRoute: typeof ApiHealthRoute
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       path: '/scan'
       fullPath: '/scan'
       preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -249,6 +269,7 @@ const ApiMachinesRouteWithChildren = ApiMachinesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  DemoRoute: DemoRoute,
   ScanRoute: ScanRoute,
   AcompanharMachineIdRoute: AcompanharMachineIdRoute,
   ApiHealthRoute: ApiHealthRoute,
