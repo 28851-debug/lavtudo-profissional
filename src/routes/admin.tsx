@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
@@ -166,6 +166,9 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
           <p>Gerencie as oito máquinas e acompanhe cada ciclo em tempo real.</p>
         </div>
         <div className="heading-actions">
+          <Link className="button primary" to="/demo">
+            <Play size={17} /> Modo demonstração
+          </Link>
           <button className="button ghost" type="button" onClick={() => void loadDashboard()}>
             <RefreshCw size={17} /> Atualizar
           </button>
