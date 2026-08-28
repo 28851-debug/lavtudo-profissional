@@ -50,9 +50,9 @@ export function MachineAccessCard({
         )}
       </div>
       <div className="tracking-access-copy">
-        <p className="eyebrow">QR Code + NFC permanentes</p>
+        <p className="eyebrow">Cartão NFC com QR Code fixo</p>
         <h3>{machineLabel}</h3>
-        <p>Imprima este QR uma única vez e grave a mesma URL no cartão NFC desta máquina.</p>
+        <p>Imprima este QR no cartão NFC e grave no chip a mesma URL permanente desta máquina.</p>
         <code>{path}</code>
         <div className="inline-actions">
           <button className="button secondary small" type="button" onClick={copy} disabled={!url}>
