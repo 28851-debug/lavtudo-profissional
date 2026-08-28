@@ -152,7 +152,6 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
   const dryers = useMemo(() => machines.filter((machine) => machine.kind === "dryer"), [machines]);
   const activeCount = machines.filter((machine) => machine.currentWash).length;
   const availableCount = machines.length - activeCount;
-  const selectedMachine = machines.find((machine) => machine.id === selectedQrId);
   const completedHistory = history.filter((wash) =>
     ["collected", "cancelled"].includes(wash.status),
   );
@@ -207,11 +206,14 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
             machines={washers}
             busyId={busyId}
             startMachineId={startMachineId}
+            selectedQrId={selectedQrId}
             onStartOpen={setStartMachineId}
             onStart={startWash}
             onStatus={(machineId, status) => void mutateMachine(machineId, { status })}
             onRelease={(machineId) => void mutateMachine(machineId, { action: "release" })}
-            onQr={setSelectedQrId}
+            onQr={(machineId) =>
+              setSelectedQrId((current) => (current === machineId ? null : machineId))
+            }
           />
           <MachineGroup
             title="Secadoras"
@@ -219,25 +221,16 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
             machines={dryers}
             busyId={busyId}
             startMachineId={startMachineId}
+            selectedQrId={selectedQrId}
             onStartOpen={setStartMachineId}
             onStart={startWash}
             onStatus={(machineId, status) => void mutateMachine(machineId, { status })}
             onRelease={(machineId) => void mutateMachine(machineId, { action: "release" })}
-            onQr={setSelectedQrId}
+            onQr={(machineId) =>
+              setSelectedQrId((current) => (current === machineId ? null : machineId))
+            }
           />
         </>
-      )}
-
-      {selectedMachine && (
-        <section
-          className="glass selected-access-card"
-          aria-label={`QR Code da ${selectedMachine.label}`}
-        >
-          <MachineAccessCard machineId={selectedMachine.id} machineLabel={selectedMachine.label} />
-          <button className="close-text-button" type="button" onClick={() => setSelectedQrId(null)}>
-            Fechar
-          </button>
-        </section>
       )}
 
       <section className="admin-history-section" aria-labelledby="admin-history-title">
@@ -280,6 +273,7 @@ function MachineGroup({
   machines,
   busyId,
   startMachineId,
+  selectedQrId,
   onStartOpen,
   onStart,
   onStatus,
@@ -291,6 +285,7 @@ function MachineGroup({
   machines: LaundryMachine[];
   busyId: LaundryMachineId | null;
   startMachineId: LaundryMachineId | null;
+  selectedQrId: LaundryMachineId | null;
   onStartOpen: (id: LaundryMachineId | null) => void;
   onStart: (id: LaundryMachineId, input: WashCreateInput) => Promise<void>;
   onStatus: (id: LaundryMachineId, status: WashStatus) => void;
@@ -384,10 +379,17 @@ function MachineGroup({
                   className="button ghost small"
                   type="button"
                   onClick={() => onQr(machine.id)}
+                  aria-expanded={selectedQrId === machine.id}
                 >
-                  <QrCode size={16} /> Ver QR fixo
+                  <QrCode size={16} /> {selectedQrId === machine.id ? "Fechar QR" : "Ver QR fixo"}
                 </button>
               </footer>
+
+              {selectedQrId === machine.id && (
+                <aside className="inline-machine-access" aria-label={`QR Code da ${machine.label}`}>
+                  <MachineAccessCard machineId={machine.id} machineLabel={machine.label} compact />
+                </aside>
+              )}
             </article>
           );
         })}

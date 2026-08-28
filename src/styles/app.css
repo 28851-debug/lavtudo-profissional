@@ -1148,20 +1148,12 @@ select:focus-visible {
   justify-content: flex-end;
   gap: 8px;
 }
-.selected-access-card {
-  position: relative;
-  margin-bottom: 20px;
-  padding: 18px;
-}
-.close-text-button {
-  position: absolute;
-  top: 12px;
-  right: 13px;
-  border: 0;
-  background: transparent;
-  color: #cfc8ee;
-  text-decoration: underline;
-  cursor: pointer;
+.inline-machine-access {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid rgba(112, 91, 232, 0.24);
+  border-radius: 15px;
+  background: rgba(15, 10, 31, 0.42);
 }
 .tracking-access {
   display: grid;
@@ -1814,6 +1806,9 @@ select:focus-visible {
   .tracking-access {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+  .tracking-access.compact {
+    grid-template-columns: 1fr;
   }
   .qr-frame {
     width: fit-content;
