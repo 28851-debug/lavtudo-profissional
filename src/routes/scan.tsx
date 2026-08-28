@@ -12,7 +12,7 @@ export const Route = createFileRoute("/scan")({
       { title: "Acompanhar lavagem — LavTudo" },
       {
         name: "description",
-        content: "Escaneie o QR Code permanente da máquina ou aproxime o cartão NFC.",
+        content: "Escaneie o QR Code impresso no cartão NFC permanente da máquina.",
       },
     ],
   }),
@@ -117,8 +117,10 @@ function ScanPage() {
       <main className="container-page access-page">
         <header className="page-heading centered">
           <p className="eyebrow">Acompanhamento em tempo real</p>
-          <h1>Acompanhe sua máquina</h1>
-          <p>Escaneie o QR Code fixo ou aproxime o celular do cartão NFC da máquina.</p>
+          <h1>Leia o cartão da máquina</h1>
+          <p>
+            Escaneie o QR Code impresso no cartão NFC fixo ou aproxime o celular do mesmo cartão.
+          </p>
         </header>
 
         <section className="access-options" aria-label="Opções de acesso">
@@ -126,8 +128,8 @@ function ScanPage() {
             <div className="access-icon">
               <QrCode size={34} />
             </div>
-            <h2>QR Code</h2>
-            <p>Aponte a câmera para o QR Code permanente da lavadora ou secadora.</p>
+            <h2>QR do cartão NFC</h2>
+            <p>Aponte a câmera para o QR Code impresso no cartão permanente da máquina.</p>
             <button
               className="button primary full"
               type="button"
@@ -145,8 +147,8 @@ function ScanPage() {
             <div className="access-icon">
               <Nfc size={35} />
             </div>
-            <h2>NFC</h2>
-            <p>O cartão NFC contém a mesma URL permanente impressa no QR Code.</p>
+            <h2>Aproximação NFC</h2>
+            <p>O chip NFC e o QR Code impresso no cartão abrem exatamente a mesma máquina.</p>
             <button
               className="button secondary full"
               type="button"
@@ -154,7 +156,7 @@ function ScanPage() {
               disabled={nfcBusy}
             >
               <Nfc size={18} />
-              {nfcBusy ? "Aguardando etiqueta…" : "Ler etiqueta NFC"}
+              {nfcBusy ? "Aguardando cartão…" : "Aproximar cartão NFC"}
             </button>
           </article>
         </section>

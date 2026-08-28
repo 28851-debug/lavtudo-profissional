@@ -30,12 +30,12 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "LavTudo: lavanderia com acompanhamento por QR Code e NFC, atualizações em tempo real e retirada sem espera.",
+          "LavTudo: acompanhe sua lavagem pelo QR Code impresso no cartão NFC permanente da máquina.",
       },
       { property: "og:title", content: "LavTudo — Acompanhe sua lavagem em tempo real" },
       {
         property: "og:description",
-        content: "QR Code, NFC e acompanhamento de cada etapa da sua lavagem.",
+        content: "Um cartão NFC com QR Code fixo por máquina e atualizações em tempo real.",
       },
     ],
   }),
@@ -56,7 +56,7 @@ const FLOW = [
   {
     icon: <Smartphone />,
     label: "Acompanhe pelo celular",
-    description: "Abra pelo QR Code ou NFC e veja o andamento ao vivo.",
+    description: "Leia o QR impresso no cartão NFC da máquina e veja o andamento ao vivo.",
   },
   {
     icon: <CheckCircle2 />,
@@ -84,12 +84,12 @@ function Index() {
             </div>
             <h1>Saiba quando sua roupa está pronta.</h1>
             <p>
-              Aponte a câmera para o QR Code da máquina ou aproxime o celular da etiqueta NFC. Você
-              acompanha cada etapa ao vivo e volta na hora certa.
+              Cada máquina possui um cartão NFC permanente com QR Code impresso. Escaneie o QR ou
+              aproxime o celular do mesmo cartão para acompanhar cada etapa ao vivo.
             </p>
             <div className="home-actions">
               <Link to="/scan" className="home-button primary">
-                <Smartphone size={19} /> Acompanhar minha lavagem <ArrowRight size={18} />
+                <Smartphone size={19} /> Ler cartão NFC / QR Code <ArrowRight size={18} />
               </Link>
               <a href="#como-funciona" className="home-button secondary">
                 Como funciona
@@ -103,7 +103,7 @@ function Index() {
                 <Clock3 size={17} /> Atualização em tempo real
               </span>
               <span>
-                <Nfc size={17} /> QR Code e NFC
+                <Nfc size={17} /> Cartão NFC com QR fixo
               </span>
             </div>
           </div>
@@ -149,7 +149,7 @@ function Index() {
               </div>
             </div>
             <div className="floating-status status-one">
-              <QrCode size={18} /> QR fixo da máquina
+              <QrCode size={18} /> QR fixo no cartão NFC
             </div>
             <div className="floating-status status-two">
               <CheckCircle2 size={18} /> Status sincronizado
@@ -187,10 +187,10 @@ function Index() {
               <div>
                 <QrCode />
               </div>
-              <h3>Acesso imediato</h3>
+              <h3>Um cartão por máquina</h3>
               <p>
-                Cada máquina possui uma URL permanente, usada pelo mesmo QR Code e pela etiqueta NFC
-                em todos os ciclos.
+                O QR Code fixo é impresso no cartão NFC da máquina. Os dois usam a mesma URL
+                permanente em todos os ciclos.
               </p>
             </article>
             <article className="feature-card">
@@ -243,10 +243,10 @@ function Index() {
         <section className="home-final-cta">
           <div>
             <p className="eyebrow">Já deixou suas roupas?</p>
-            <h2>Escaneie o QR Code da máquina e acompanhe em tempo real.</h2>
+            <h2>Leia o QR Code do cartão NFC da máquina e acompanhe em tempo real.</h2>
           </div>
           <Link to="/scan" className="home-button primary">
-            Abrir acompanhamento <ArrowRight size={18} />
+            Ler cartão da máquina <ArrowRight size={18} />
           </Link>
         </section>
       </main>
@@ -260,12 +260,12 @@ function Index() {
         </div>
         <nav className="footer-links" aria-label="Links do rodapé">
           <a href="#como-funciona">Como funciona</a>
-          <Link to="/scan">Acompanhar lavagem</Link>
+          <Link to="/scan">Ler cartão NFC / QR Code</Link>
           <Link className="employee-footer-link" to="/admin">
             Área do funcionário
           </Link>
         </nav>
-        <p className="footer-note">Acesso rápido por QR Code ou etiqueta NFC.</p>
+        <p className="footer-note">QR Code fixo impresso no cartão NFC de cada máquina.</p>
       </footer>
     </div>
   );
