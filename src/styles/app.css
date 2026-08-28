@@ -1148,20 +1148,12 @@ select:focus-visible {
   justify-content: flex-end;
   gap: 8px;
 }
-.selected-access-card {
-  position: relative;
-  margin-bottom: 20px;
-  padding: 18px;
-}
-.close-text-button {
-  position: absolute;
-  top: 12px;
-  right: 13px;
-  border: 0;
-  background: transparent;
-  color: #cfc8ee;
-  text-decoration: underline;
-  cursor: pointer;
+.inline-machine-access {
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid rgba(112, 91, 232, 0.24);
+  border-radius: 15px;
+  background: rgba(15, 10, 31, 0.42);
 }
 .tracking-access {
   display: grid;
@@ -1815,6 +1807,9 @@ select:focus-visible {
     grid-template-columns: 1fr;
     text-align: center;
   }
+  .tracking-access.compact {
+    grid-template-columns: 1fr;
+  }
   .qr-frame {
     width: fit-content;
     margin: auto;
@@ -1888,5 +1883,152 @@ select:focus-visible {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* TCC demonstration controller */
+.demo-page {
+  padding-bottom: 5rem;
+  padding-top: 36px;
+}
+.demo-heading .eyebrow {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+.demo-control-card {
+  overflow: hidden;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+.demo-machine-summary {
+  align-items: center;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: auto 1fr auto;
+  margin-bottom: 1.75rem;
+}
+.demo-machine-summary h2 {
+  margin: 0.15rem 0 0.25rem;
+}
+.demo-machine-summary code {
+  color: #aaa1cc;
+  font-size: 0.82rem;
+}
+.demo-machine-summary > div > span {
+  color: #aaa1cc;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.demo-machine-icon {
+  align-items: center;
+  background: linear-gradient(135deg, #7059e8, #33d6ee);
+  border-radius: 1rem;
+  color: white;
+  display: flex;
+  height: 3.5rem;
+  justify-content: center;
+  width: 3.5rem;
+}
+.demo-stage-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.demo-stage-button {
+  align-items: center;
+  background: rgba(28, 23, 50, 0.72);
+  border: 1px solid rgba(156, 139, 232, 0.2);
+  border-radius: 1rem;
+  color: #f8f6ff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  justify-content: center;
+  min-height: 8.5rem;
+  padding: 1rem 0.75rem;
+  text-align: center;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.demo-stage-button:hover:not(:disabled) {
+  border-color: rgba(134, 107, 255, 0.65);
+  box-shadow: 0 14px 32px rgba(91, 65, 203, 0.18);
+  transform: translateY(-2px);
+}
+.demo-stage-button.active {
+  background: linear-gradient(145deg, rgba(112, 89, 232, 0.26), rgba(28, 23, 50, 0.9));
+  border-color: #8a72ff;
+  box-shadow: 0 14px 35px rgba(91, 65, 203, 0.24);
+}
+.demo-stage-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+.demo-stage-number {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  display: flex;
+  font-size: 0.73rem;
+  font-weight: 800;
+  height: 1.5rem;
+  justify-content: center;
+  width: 1.5rem;
+}
+.demo-stage-button.active .demo-stage-number {
+  background: #725be8;
+  color: white;
+}
+.demo-reset-row {
+  align-items: center;
+  border-top: 1px solid rgba(156, 139, 232, 0.18);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+}
+.demo-reset-row p {
+  color: #aaa1cc;
+  font-size: 0.9rem;
+  margin: 0;
+}
+.danger-outline {
+  border-color: rgba(255, 112, 132, 0.45);
+  color: #ff91a3;
+}
+.demo-loading {
+  min-height: 8.5rem;
+}
+
+@media (max-width: 900px) {
+  .demo-stage-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .demo-stage-button:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .demo-machine-summary {
+    grid-template-columns: auto 1fr;
+  }
+  .demo-machine-summary > .machine-state-pill {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .demo-reset-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .demo-reset-row .button {
+    justify-content: center;
+    width: 100%;
   }
 }
