@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Pagination } from "swiper/modules";
+import { useEffect, useRef } from "react";
 import "swiper/css";
 import "swiper/css/pagination";
 import {
@@ -73,8 +74,38 @@ const SLIDES = [
 ];
 
 function Index() {
+  const homeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const root = homeRef.current;
+    if (!root) return;
+
+    const items = Array.from(root.querySelectorAll<HTMLElement>("[data-scroll-reveal]"));
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      items.forEach((item) => item.classList.add("is-visible"));
+      return;
+    }
+
+    root.classList.add("scroll-animations-ready");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+    );
+
+    items.forEach((item) => observer.observe(item));
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="home-shell">
+    <div ref={homeRef} className="home-shell">
       <Nav />
       <main>
         <section className="home-hero">
@@ -158,14 +189,14 @@ function Index() {
         </section>
 
         <section id="como-funciona" className="flow-section" aria-labelledby="flow-title">
-          <div className="section-title">
+          <div className="section-title" data-scroll-reveal>
             <p className="eyebrow">Experiência conectada</p>
             <h2 id="flow-title">Do balcão à retirada, tudo transparente</h2>
             <p>O funcionário atualiza o processo e o cliente vê a mudança no próprio celular.</p>
           </div>
           <ol className="home-flow">
             {FLOW.map((item, index) => (
-              <li key={item.label}>
+              <li key={item.label} data-scroll-reveal>
                 <span className="flow-number">{index + 1}</span>
                 <span className="flow-icon" aria-hidden="true">
                   {item.icon}
@@ -178,12 +209,12 @@ function Index() {
         </section>
 
         <section className="feature-section" aria-labelledby="features-title">
-          <div className="section-title">
+          <div className="section-title" data-scroll-reveal>
             <p className="eyebrow">Como funciona</p>
             <h2 id="features-title">Simples para o cliente. Completo para a equipe.</h2>
           </div>
           <div className="feature-grid">
-            <article className="feature-card">
+            <article className="feature-card" data-scroll-reveal>
               <div>
                 <QrCode />
               </div>
@@ -193,7 +224,7 @@ function Index() {
                 permanente em todos os ciclos.
               </p>
             </article>
-            <article className="feature-card">
+            <article className="feature-card" data-scroll-reveal>
               <div>
                 <Smartphone />
               </div>
@@ -203,7 +234,7 @@ function Index() {
                 celular.
               </p>
             </article>
-            <article className="feature-card">
+            <article className="feature-card" data-scroll-reveal>
               <div>
                 <UserRoundCog />
               </div>
@@ -217,11 +248,11 @@ function Index() {
         </section>
 
         <section className="gallery-section" aria-labelledby="gallery-title">
-          <div className="section-title light">
+          <div className="section-title light" data-scroll-reveal>
             <p className="eyebrow">Conheça a LavTudo</p>
             <h2 id="gallery-title">Estrutura pensada para cuidar bem das suas roupas</h2>
           </div>
-          <div className="home-slider">
+          <div className="home-slider" data-scroll-reveal>
             <Swiper
               modules={[Autoplay, Pagination]}
               spaceBetween={18}
@@ -240,7 +271,7 @@ function Index() {
           </div>
         </section>
 
-        <section className="home-final-cta">
+        <section className="home-final-cta" data-scroll-reveal>
           <div>
             <p className="eyebrow">Já deixou suas roupas?</p>
             <h2>Leia o QR Code do cartão NFC da máquina e acompanhe em tempo real.</h2>
