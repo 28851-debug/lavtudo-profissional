@@ -1,8 +1,15 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Camera, Info, Nfc, QrCode } from "lucide-react";
+import { Camera, Info, Nfc, QrCode, ScanLine, Smartphone, Sparkles } from "lucide-react";
 import { Nav } from "@/components/Nav";
 import { QRScanner } from "@/components/scan/QRScanner";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { isLaundryMachineId, type LaundryMachineId } from "@/lib/washes";
 import "@/styles/app.css";
 
@@ -41,6 +48,7 @@ function ScanPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [message, setMessage] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [nfcBusy, setNfcBusy] = useState(false);
+  const [nfcOpen, setNfcOpen] = useState(false);
 
   const openMachine = (machineId: LaundryMachineId) => {
     void navigate({ to: "/acompanhar/$machineId", params: { machineId } });
@@ -61,6 +69,7 @@ function ScanPage() {
 
   const handleNfc = async () => {
     setMessage(null);
+    setNfcOpen(true);
     if (!("NDEFReader" in window)) {
       setMessage({
         kind: "info",
@@ -160,6 +169,84 @@ function ScanPage() {
             </button>
           </article>
         </section>
+
+        <Dialog open={nfcOpen} onOpenChange={setNfcOpen}>
+          <DialogContent className="nfc-dialog">
+            <div className="nfc-dialog-visual" aria-hidden="true">
+              <span className="nfc-signal-ring ring-one" />
+              <span className="nfc-signal-ring ring-two" />
+              <span className="nfc-signal-ring ring-three" />
+              <div className="nfc-phone">
+                <Smartphone size={70} strokeWidth={1.55} />
+                <Nfc className="nfc-phone-symbol" size={27} strokeWidth={2.2} />
+              </div>
+              <div className="nfc-card">
+                <Nfc size={25} />
+                <span>LavTudo</span>
+              </div>
+            </div>
+
+            <div className="nfc-dialog-copy">
+              <p className="eyebrow">
+                <Sparkles size={14} /> Leitura por aproximação
+              </p>
+              <DialogTitle>Aproxime seu dispositivo do cartão</DialogTitle>
+              <DialogDescription>
+                Encoste a parte superior do celular no cartão NFC da máquina e mantenha-o próximo
+                por alguns segundos.
+              </DialogDescription>
+            </div>
+
+            <div className="nfc-dialog-steps" aria-label="Como aproximar o cartão NFC">
+              <div>
+                <span>1</span>
+                <p>
+                  <strong>Desbloqueie o celular</strong>
+                  Mantenha a tela ligada durante a leitura.
+                </p>
+              </div>
+              <div>
+                <span>2</span>
+                <p>
+                  <strong>Aproxime do cartão</strong>
+                  Encoste devagar até o aparelho vibrar.
+                </p>
+              </div>
+            </div>
+
+            <div className={`nfc-dialog-status ${nfcBusy ? "is-listening" : ""}`} role="status">
+              <span className="nfc-status-dot" aria-hidden="true" />
+              <div>
+                <strong>{nfcBusy ? "Leitor NFC ativo" : "Pronto para aproximação"}</strong>
+                <span>
+                  {nfcBusy
+                    ? "Aguardando o cartão da máquina…"
+                    : "O próprio celular abrirá o acompanhamento da máquina."}
+                </span>
+              </div>
+            </div>
+
+            <div className="nfc-dialog-actions">
+              <DialogClose asChild>
+                <button className="button ghost" type="button">
+                  Fechar
+                </button>
+              </DialogClose>
+              <DialogClose asChild>
+                <button
+                  className="button primary"
+                  type="button"
+                  onClick={() => {
+                    setMessage(null);
+                    setShowScanner(true);
+                  }}
+                >
+                  <ScanLine size={18} /> Usar QR Code
+                </button>
+              </DialogClose>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {showScanner && (
           <section className="glass scanner-panel" aria-label="Leitor de QR Code">
