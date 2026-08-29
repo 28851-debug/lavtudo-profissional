@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Clock3,
   History,
-  Radio,
   RefreshCw,
   Shirt,
   WashingMachine,
@@ -52,9 +51,7 @@ export const Route = createFileRoute("/acompanhar/$machineId")({
 
 function TrackingPage() {
   const { machineId } = Route.useParams();
-  const { machine, loading, refreshing, error, retry } = useMachinePolling(
-    machineId as LaundryMachineId,
-  );
+  const { machine, loading, error, retry } = useMachinePolling(machineId as LaundryMachineId);
 
   return (
     <div className="lav-shell tracking-shell">
@@ -64,10 +61,6 @@ function TrackingPage() {
           <Link to="/scan" className="back-link">
             ← Voltar
           </Link>
-          <div className={`live-indicator ${error ? "offline" : ""}`}>
-            <Radio size={14} aria-hidden="true" />
-            {error ? "Reconectando" : refreshing ? "Atualizando" : "Ao vivo"}
-          </div>
         </div>
 
         {loading && !machine ? (
