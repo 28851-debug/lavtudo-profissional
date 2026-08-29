@@ -174,7 +174,12 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.1), transparent 23% 78%, rgba(126, 99, 224, 0.06));
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0.1),
+    transparent 23% 78%,
+    rgba(126, 99, 224, 0.06)
+  );
 }
 .phone-brand {
   position: relative;
@@ -749,11 +754,23 @@
     justify-items: center;
   }
   .home-hero-visual {
-    min-height: 330px;
+    min-height: 0;
+    padding: 44px 0 52px;
   }
   .floating-status {
     padding: 8px 10px;
     font-size: 0.64rem;
+    white-space: nowrap;
+  }
+  .status-one {
+    top: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .status-two {
+    right: 50%;
+    bottom: 6px;
+    transform: translateX(50%);
   }
   .home-flow {
     grid-template-columns: 1fr;
