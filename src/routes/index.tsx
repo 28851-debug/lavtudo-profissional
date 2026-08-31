@@ -83,12 +83,13 @@ function Index() {
     const items = Array.from(root.querySelectorAll<HTMLElement>("[data-scroll-reveal]"));
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    if (reducedMotion || !("IntersectionObserver" in window)) {
+    if (!("IntersectionObserver" in window)) {
       items.forEach((item) => item.classList.add("is-visible"));
       return;
     }
 
     root.classList.add("scroll-animations-ready");
+    if (reducedMotion) root.classList.add("reduced-motion");
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -101,7 +102,10 @@ function Index() {
     );
 
     items.forEach((item) => observer.observe(item));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      root.classList.remove("scroll-animations-ready", "reduced-motion");
+    };
   }, []);
 
   return (
