@@ -15,11 +15,12 @@ function getAuthConfig(): AuthConfig {
   const username = process.env.LAVTUDO_ADMIN_USER?.trim() || "admin";
   const password = process.env.LAVTUDO_ADMIN_PASSWORD?.trim() || "admin";
   const configuredSecret = process.env.LAVTUDO_SESSION_SECRET?.trim();
+  const isProduction = process.env.NODE_ENV === "production";
   return {
-    configured: true,
+    configured: Boolean(configuredSecret) || !isProduction,
     username,
     password,
-    sessionSecret: configuredSecret || "lavtudo-production-session-cookie-v1",
+    sessionSecret: configuredSecret || "lavtudo-development-session-cookie-v1",
     usingDevelopmentCredentials: !configuredSecret,
   };
 }
