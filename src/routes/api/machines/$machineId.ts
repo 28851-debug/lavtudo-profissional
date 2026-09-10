@@ -2,7 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { isAdminRequest } from "@/lib/auth.server";
 import { apiError, jsonResponse, requestIsSameOrigin } from "@/lib/http";
-import { createWash, findMachine, releaseMachine, setMachineStatus } from "@/lib/wash-store.server";
+import {
+  createWash,
+  describeDatabaseError,
+  findMachine,
+  logDatabaseError,
+  releaseMachine,
+  setMachineStatus,
+} from "@/lib/wash-store.server";
 import { WASH_STATUSES, isLaundryMachineId, type LaundryMachineId } from "@/lib/washes";
 
 const createWashSchema = z.object({
@@ -30,8 +37,12 @@ export const Route = createFileRoute("/api/machines/$machineId")({
           const machine = await findMachine(machineId);
           return machine ? jsonResponse({ machine }) : apiError("Máquina não encontrada.", 404);
         } catch (error) {
-          console.error("Falha ao buscar máquina", error);
-          return apiError("Acompanhamento temporariamente indisponível.", 503);
+          logDatabaseError("Falha ao buscar máquina", error);
+          const failure = describeDatabaseError(
+            error,
+            "Acompanhamento temporariamente indisponível.",
+          );
+          return apiError(failure.publicMessage, failure.status);
         }
       },
       POST: async ({ request, params }) => {
@@ -51,13 +62,14 @@ export const Route = createFileRoute("/api/machines/$machineId")({
           const machine = await createWash(machineId, input);
           return jsonResponse({ machine }, { status: 201 });
         } catch (error) {
-          console.error("Falha ao iniciar ciclo", error);
+          logDatabaseError("Falha ao iniciar ciclo", error);
           const message = error instanceof Error ? error.message : "";
+          const failure = describeDatabaseError(error, "Não foi possível iniciar o ciclo.");
           return apiError(
             message.includes("ocupada")
               ? "Esta máquina já possui um ciclo ativo."
-              : "Não foi possível iniciar o ciclo.",
-            message.includes("ocupada") ? 409 : 503,
+              : failure.publicMessage,
+            message.includes("ocupada") ? 409 : failure.status,
           );
         }
       },
@@ -81,8 +93,9 @@ export const Route = createFileRoute("/api/machines/$machineId")({
               : await setMachineStatus(machineId, update.status);
           return machine ? jsonResponse({ machine }) : apiError("Nenhum ciclo ativo.", 404);
         } catch (error) {
-          console.error("Falha ao atualizar máquina", error);
-          return apiError("Não foi possível atualizar o status.", 503);
+          logDatabaseError("Falha ao atualizar máquina", error);
+          const failure = describeDatabaseError(error, "Não foi possível atualizar o status.");
+          return apiError(failure.publicMessage, failure.status);
         }
       },
     },

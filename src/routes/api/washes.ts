@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAdminRequest } from "@/lib/auth.server";
 import { apiError, jsonResponse } from "@/lib/http";
-import { listWashes, storageMode } from "@/lib/wash-store.server";
+import {
+  describeDatabaseError,
+  listWashes,
+  logDatabaseError,
+  storageMode,
+} from "@/lib/wash-store.server";
 
 export const Route = createFileRoute("/api/washes")({
   server: {
@@ -11,8 +16,9 @@ export const Route = createFileRoute("/api/washes")({
         try {
           return jsonResponse({ washes: await listWashes(), storage: storageMode() });
         } catch (error) {
-          console.error("Falha ao listar lavagens", error);
-          return apiError("Não foi possível carregar as lavagens.", 503);
+          logDatabaseError("Falha ao listar lavagens", error);
+          const failure = describeDatabaseError(error, "Não foi possível carregar as lavagens.");
+          return apiError(failure.publicMessage, failure.status);
         }
       },
     },

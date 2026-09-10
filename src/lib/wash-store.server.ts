@@ -2,18 +2,117 @@ import "@tanstack/react-start/server-only";
 
 import type { LaundryMachine, LaundryMachineId, Wash, WashCreateInput, WashStatus } from "./washes";
 
-type SupabaseConfig = { url: string; key: string };
+type SupabaseConfig = {
+  url: string;
+  publishableKey: string;
+  secretKey: string;
+};
 
-// Publishable keys identify a Supabase project and are not secrets. Keeping the
-// default here lets the Git-connected Vercel project run without exposing any
-// privileged database credential in the browser bundle.
-const DEFAULT_SUPABASE_URL = "https://norrcmmpzgxvyjozlugo.supabase.co";
-const DEFAULT_SUPABASE_KEY = "sb_publishable_3Z_AIyluPRczUGEN7VsZiQ_dNtU4FUl";
+type SupabaseAccess = "public" | "admin";
+
+export class DatabaseConfigurationError extends Error {
+  readonly missingKeys: string[];
+
+  constructor(missingKeys: string[]) {
+    super(`Variáveis de banco ausentes: ${missingKeys.join(", ")}`);
+    this.name = "DatabaseConfigurationError";
+    this.missingKeys = missingKeys;
+  }
+}
+
+export class SupabaseRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "SupabaseRequestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+type DatabaseErrorDescription = {
+  status: number;
+  publicMessage: string;
+  reason: string;
+};
+
+export function describeDatabaseError(
+  error: unknown,
+  fallbackMessage: string,
+): DatabaseErrorDescription {
+  if (error instanceof DatabaseConfigurationError) {
+    return {
+      status: 503,
+      publicMessage: "O banco de dados ainda não está configurado neste ambiente.",
+      reason: `missing_environment:${error.missingKeys.join(",")}`,
+    };
+  }
+
+  if (error instanceof SupabaseRequestError) {
+    if (error.status === 401 || error.status === 403) {
+      return {
+        status: 503,
+        publicMessage: "A conexão segura com o banco de dados precisa ser reconfigurada.",
+        reason: `supabase_auth:${error.status}:${error.code ?? "unknown"}`,
+      };
+    }
+
+    if (error.code === "PGRST202" || error.code === "42P01" || error.code === "42883") {
+      return {
+        status: 503,
+        publicMessage: "A estrutura do banco de dados ainda não está pronta.",
+        reason: `supabase_schema:${error.status}:${error.code}`,
+      };
+    }
+
+    return {
+      status: error.status >= 500 ? 503 : error.status,
+      publicMessage: fallbackMessage,
+      reason: `supabase_request:${error.status}:${error.code ?? "unknown"}`,
+    };
+  }
+
+  if (error instanceof TypeError) {
+    return {
+      status: 503,
+      publicMessage: "Não foi possível conectar ao banco de dados agora.",
+      reason: "supabase_network",
+    };
+  }
+
+  return {
+    status: 503,
+    publicMessage: fallbackMessage,
+    reason: "unexpected_database_error",
+  };
+}
+
+export function logDatabaseError(context: string, error: unknown): void {
+  const description = describeDatabaseError(error, "Falha inesperada no banco de dados.");
+  console.error(`[LavTudo] ${context}`, {
+    reason: description.reason,
+    errorName: error instanceof Error ? error.name : typeof error,
+  });
+}
 
 function getSupabaseConfig(): SupabaseConfig {
+  const url = process.env.SUPABASE_URL?.trim().replace(/\/$/u, "") || "";
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || "";
+  const secretKey = process.env.SUPABASE_SECRET_KEY?.trim() || "";
+  const missingKeys = [
+    !url && "SUPABASE_URL",
+    !publishableKey && "SUPABASE_PUBLISHABLE_KEY",
+    !secretKey && "SUPABASE_SECRET_KEY",
+  ].filter((key): key is string => Boolean(key));
+
+  if (missingKeys.length > 0) throw new DatabaseConfigurationError(missingKeys);
+
   return {
-    url: (process.env.SUPABASE_URL?.trim() || DEFAULT_SUPABASE_URL).replace(/\/$/u, ""),
-    key: process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || DEFAULT_SUPABASE_KEY,
+    url,
+    publishableKey,
+    secretKey,
   };
 }
 
@@ -28,13 +127,14 @@ async function supabaseRpc<T>(
   name: string,
   parameters: Record<string, unknown>,
   accessHeaders: Record<string, string>,
+  access: SupabaseAccess,
 ): Promise<T> {
   const config = getSupabaseConfig();
+  const key = access === "admin" ? config.secretKey : config.publishableKey;
   const response = await fetch(`${config.url}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: {
-      apikey: config.key,
-      Authorization: `Bearer ${config.key}`,
+      apikey: key,
       "Content-Type": "application/json",
       Accept: "application/json",
       ...accessHeaders,
@@ -45,11 +145,18 @@ async function supabaseRpc<T>(
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
+      code?: string;
       message?: string;
+      details?: string;
       hint?: string;
     } | null;
-    throw new Error(
-      body?.message || body?.hint || `Supabase respondeu com HTTP ${response.status}.`,
+    throw new SupabaseRequestError(
+      body?.message ||
+        body?.details ||
+        body?.hint ||
+        `Supabase respondeu com HTTP ${response.status}.`,
+      response.status,
+      body?.code,
     );
   }
 
@@ -62,18 +169,28 @@ export function storageMode(): "supabase" {
 
 export async function listWashes(): Promise<Wash[]> {
   const credentials = databaseAdminCredentials();
-  return supabaseRpc<Wash[]>("lavtudo_list_washes", credentials, {
-    "X-LavTudo-Admin-User": credentials.p_user,
-    "X-LavTudo-Admin-Password": credentials.p_password,
-  });
+  return supabaseRpc<Wash[]>(
+    "lavtudo_list_washes",
+    credentials,
+    {
+      "X-LavTudo-Admin-User": credentials.p_user,
+      "X-LavTudo-Admin-Password": credentials.p_password,
+    },
+    "admin",
+  );
 }
 
 export async function listMachines(): Promise<LaundryMachine[]> {
   const credentials = databaseAdminCredentials();
-  return supabaseRpc<LaundryMachine[]>("lavtudo_list_machines", credentials, {
-    "X-LavTudo-Admin-User": credentials.p_user,
-    "X-LavTudo-Admin-Password": credentials.p_password,
-  });
+  return supabaseRpc<LaundryMachine[]>(
+    "lavtudo_list_machines",
+    credentials,
+    {
+      "X-LavTudo-Admin-User": credentials.p_user,
+      "X-LavTudo-Admin-Password": credentials.p_password,
+    },
+    "admin",
+  );
 }
 
 export async function findMachine(id: LaundryMachineId): Promise<LaundryMachine | undefined> {
@@ -81,6 +198,7 @@ export async function findMachine(id: LaundryMachineId): Promise<LaundryMachine 
     "lavtudo_get_machine",
     { p_id: id },
     { "X-LavTudo-Machine-Id": id },
+    "public",
   );
   return machine ?? undefined;
 }
@@ -103,6 +221,7 @@ export async function createWash(
       "X-LavTudo-Admin-User": credentials.p_user,
       "X-LavTudo-Admin-Password": credentials.p_password,
     },
+    "admin",
   );
 }
 
@@ -118,6 +237,7 @@ export async function setMachineStatus(
       "X-LavTudo-Admin-User": credentials.p_user,
       "X-LavTudo-Admin-Password": credentials.p_password,
     },
+    "admin",
   );
   return machine ?? undefined;
 }
@@ -133,6 +253,7 @@ export async function releaseMachine(
       "X-LavTudo-Admin-User": credentials.p_user,
       "X-LavTudo-Admin-Password": credentials.p_password,
     },
+    "admin",
   );
   return machine ?? undefined;
 }

@@ -53,9 +53,10 @@ LAVTUDO_ADMIN_PASSWORD=admin
 LAVTUDO_SESSION_SECRET=uma-chave-aleatoria-longa
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
-As credenciais `admin` / `admin` foram mantidas conforme solicitado. Altere-as antes de colocar o painel em uso público permanente. A URL e a chave publishable do Supabase possuem valores padrão no módulo server-only e podem ser sobrescritas pelas variáveis acima.
+As credenciais `admin` / `admin` foram mantidas conforme solicitado. Altere-as antes de colocar o painel em uso público permanente. As três variáveis do Supabase são obrigatórias. A chave publishable atende somente às consultas públicas protegidas por RLS; a chave secreta é lida exclusivamente pelas rotas server-side e nunca deve receber o prefixo `VITE_`.
 
 As migrações versionadas estão em `supabase/migrations`.
 

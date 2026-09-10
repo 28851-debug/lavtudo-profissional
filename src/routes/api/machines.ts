@@ -1,7 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isAdminRequest } from "@/lib/auth.server";
 import { apiError, jsonResponse } from "@/lib/http";
-import { listMachines, storageMode } from "@/lib/wash-store.server";
+import {
+  describeDatabaseError,
+  listMachines,
+  logDatabaseError,
+  storageMode,
+} from "@/lib/wash-store.server";
 
 export const Route = createFileRoute("/api/machines")({
   server: {
@@ -11,8 +16,9 @@ export const Route = createFileRoute("/api/machines")({
         try {
           return jsonResponse({ machines: await listMachines(), storage: storageMode() });
         } catch (error) {
-          console.error("Falha ao listar máquinas", error);
-          return apiError("Não foi possível carregar as máquinas.", 503);
+          logDatabaseError("Falha ao listar máquinas", error);
+          const failure = describeDatabaseError(error, "Não foi possível carregar as máquinas.");
+          return apiError(failure.publicMessage, failure.status);
         }
       },
     },
