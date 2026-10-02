@@ -5,6 +5,7 @@ import {
   DatabaseZap,
   History,
   LogOut,
+  PawPrint,
   Play,
   QrCode,
   RefreshCw,
@@ -19,7 +20,9 @@ import {
   SERVICE_LABEL,
   STATUS_SHORT_LABEL,
   formatWashDate,
+  isPetMachineId,
   remainingMinutesForWash,
+  serviceTypesForMachine,
   type LaundryMachine,
   type LaundryMachineId,
   type Wash,
@@ -146,7 +149,11 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
   };
 
   const washers = useMemo(
-    () => machines.filter((machine) => machine.kind === "washer"),
+    () => machines.filter((machine) => machine.kind === "washer" && !isPetMachineId(machine.id)),
+    [machines],
+  );
+  const petWashers = useMemo(
+    () => machines.filter((machine) => isPetMachineId(machine.id)),
     [machines],
   );
   const dryers = useMemo(() => machines.filter((machine) => machine.kind === "dryer"), [machines]);
@@ -162,7 +169,7 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
         <div>
           <p className="eyebrow">Operação LavTudo</p>
           <h1>Painel do funcionário</h1>
-          <p>Gerencie as oito máquinas e acompanhe cada ciclo em tempo real.</p>
+          <p>Gerencie todas as máquinas e acompanhe cada ciclo em tempo real.</p>
         </div>
         <div className="heading-actions">
           <Link className="button primary" to="/demo">
@@ -201,6 +208,7 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
       ) : (
         <>
           <MachineGroup
+            groupId="washers"
             title="Lavadoras"
             icon={<WashingMachine size={22} />}
             machines={washers}
@@ -216,6 +224,25 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
             }
           />
           <MachineGroup
+            groupId="pet-washer"
+            title="Lavadora Pet"
+            description="Equipamento exclusivo para mantas, roupas e acessórios de animais."
+            icon={<PawPrint size={22} />}
+            machines={petWashers}
+            busyId={busyId}
+            startMachineId={startMachineId}
+            selectedQrId={selectedQrId}
+            onStartOpen={setStartMachineId}
+            onStart={startWash}
+            onStatus={(machineId, status) => void mutateMachine(machineId, { status })}
+            onRelease={(machineId) => void mutateMachine(machineId, { action: "release" })}
+            onQr={(machineId) =>
+              setSelectedQrId((current) => (current === machineId ? null : machineId))
+            }
+            pet
+          />
+          <MachineGroup
+            groupId="dryers"
             title="Secadoras"
             icon={<Wind size={22} />}
             machines={dryers}
@@ -268,7 +295,9 @@ function EmployeeDashboard({ onLogout }: { onLogout: () => Promise<void> }) {
 }
 
 function MachineGroup({
+  groupId,
   title,
+  description,
   icon,
   machines,
   busyId,
@@ -279,8 +308,11 @@ function MachineGroup({
   onStatus,
   onRelease,
   onQr,
+  pet = false,
 }: {
+  groupId: string;
   title: string;
+  description?: string;
   icon: React.ReactNode;
   machines: LaundryMachine[];
   busyId: LaundryMachineId | null;
@@ -291,14 +323,21 @@ function MachineGroup({
   onStatus: (id: LaundryMachineId, status: WashStatus) => void;
   onRelease: (id: LaundryMachineId) => void;
   onQr: (id: LaundryMachineId) => void;
+  pet?: boolean;
 }) {
+  if (machines.length === 0) return null;
+
   return (
-    <section className="machine-group" aria-labelledby={`group-${machines[0]?.kind}`}>
+    <section
+      className={`machine-group ${pet ? "machine-group-pet" : ""}`}
+      aria-labelledby={`group-${groupId}`}
+    >
       <div className="machine-group-title">
         <span aria-hidden="true">{icon}</span>
         <div>
-          <p className="eyebrow">Equipamentos permanentes</p>
-          <h2 id={`group-${machines[0]?.kind}`}>{title}</h2>
+          <p className="eyebrow">{pet ? "Higiene especializada" : "Equipamentos permanentes"}</p>
+          <h2 id={`group-${groupId}`}>{title}</h2>
+          {description && <p className="machine-group-description">{description}</p>}
         </div>
       </div>
       <div className="machine-admin-grid">
@@ -307,13 +346,18 @@ function MachineGroup({
           const remaining = wash ? remainingMinutesForWash(wash) : null;
           return (
             <article
-              className={`glass machine-admin-card ${wash ? "is-busy" : "is-available"}`}
+              className={`glass machine-admin-card ${wash ? "is-busy" : "is-available"} ${isPetMachineId(machine.id) ? "is-pet-machine" : ""}`}
               key={machine.id}
             >
               <header>
                 <div>
                   <span className="machine-permanent-id">{machine.id}</span>
                   <h3>{machine.label}</h3>
+                  {isPetMachineId(machine.id) && (
+                    <span className="pet-exclusive-badge">
+                      <PawPrint size={13} aria-hidden="true" /> Uso exclusivo pet
+                    </span>
+                  )}
                 </div>
                 <span
                   className={`machine-state-pill ${wash ? `status-${wash.status}` : "status-available"}`}
@@ -372,7 +416,12 @@ function MachineGroup({
                     type="button"
                     onClick={() => onStartOpen(machine.id)}
                   >
-                    <Play size={16} /> Nova {machine.kind === "washer" ? "lavagem" : "secagem"}
+                    <Play size={16} /> Nova{" "}
+                    {isPetMachineId(machine.id)
+                      ? "lavagem pet"
+                      : machine.kind === "washer"
+                        ? "lavagem"
+                        : "secagem"}
                   </button>
                 )}
                 <button
@@ -409,9 +458,12 @@ function StartCycleForm({
   onCancel: () => void;
   onStart: (input: WashCreateInput) => Promise<void>;
 }) {
-  const initialService: WashServiceType = machine.kind === "dryer" ? "drying" : "standard";
+  const serviceTypes = serviceTypesForMachine(machine.id, machine.kind);
+  const initialService: WashServiceType = serviceTypes[0];
   const [serviceType, setServiceType] = useState<WashServiceType>(initialService);
-  const [estimatedMinutes, setEstimatedMinutes] = useState(machine.kind === "dryer" ? 30 : 45);
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    machine.kind === "dryer" ? 30 : isPetMachineId(machine.id) ? 50 : 45,
+  );
   const [startedAt, setStartedAt] = useState(() => toLocalDateTime(new Date()));
 
   return (
@@ -433,15 +485,11 @@ function StartCycleForm({
           value={serviceType}
           onChange={(event) => setServiceType(event.target.value as WashServiceType)}
         >
-          {machine.kind === "dryer" ? (
-            <option value="drying">Secagem</option>
-          ) : (
-            <>
-              <option value="standard">Lavagem padrão</option>
-              <option value="delicate">Roupas delicadas</option>
-              <option value="heavy">Lavagem intensa</option>
-            </>
-          )}
+          {serviceTypes.map((service) => (
+            <option value={service} key={service}>
+              {SERVICE_LABEL[service]}
+            </option>
+          ))}
         </select>
       </div>
       <div className="form-field">

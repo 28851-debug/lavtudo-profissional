@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock3,
   History,
+  PawPrint,
   RefreshCw,
   Shirt,
   WashingMachine,
@@ -18,6 +19,7 @@ import {
   STATUS_SHORT_LABEL,
   formatWashDate,
   isLaundryMachineId,
+  isPetMachineId,
   progressForStatus,
   remainingMinutesForWash,
   stagesForMachine,
@@ -99,6 +101,7 @@ function AvailableMachine({
           <div>
             <p className="eyebrow">Acompanhamento da máquina</p>
             <h1>{machine.label}</h1>
+            {isPetMachineId(machine.id) && <PetMachineBadge />}
           </div>
           <span className="status-chip status-available">Disponível</span>
         </div>
@@ -149,6 +152,7 @@ function TrackingContent({
           <div>
             <p className="eyebrow">Acompanhamento da máquina</p>
             <h1>{machine.label}</h1>
+            {isPetMachineId(machine.id) && <PetMachineBadge />}
             <span className="current-wash-id">Ciclo atual #{wash.id}</span>
           </div>
           <span className={`status-chip status-${wash.status}`}>
@@ -276,6 +280,14 @@ function TrackingContent({
         </ol>
       </section>
     </>
+  );
+}
+
+function PetMachineBadge() {
+  return (
+    <span className="pet-tracking-badge">
+      <PawPrint size={14} aria-hidden="true" /> Exclusiva para roupas de pet
+    </span>
   );
 }
 

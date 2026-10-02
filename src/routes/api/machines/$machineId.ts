@@ -10,10 +10,15 @@ import {
   releaseMachine,
   setMachineStatus,
 } from "@/lib/wash-store.server";
-import { WASH_STATUSES, isLaundryMachineId, type LaundryMachineId } from "@/lib/washes";
+import {
+  WASH_SERVICE_TYPES,
+  WASH_STATUSES,
+  isLaundryMachineId,
+  type LaundryMachineId,
+} from "@/lib/washes";
 
 const createWashSchema = z.object({
-  serviceType: z.enum(["standard", "delicate", "heavy", "drying"]),
+  serviceType: z.enum(WASH_SERVICE_TYPES),
   estimatedMinutes: z.number().int().min(5).max(240),
   startedAt: z.string().datetime({ offset: true }),
 });

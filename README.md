@@ -4,7 +4,7 @@ Aplicação comercial da LavTudo Lavanderia Express para acompanhamento de ciclo
 
 ## Fluxo principal
 
-1. A lavanderia possui quatro lavadoras e quatro secadoras cadastradas permanentemente.
+1. A lavanderia possui quatro lavadoras convencionais, uma lavadora exclusiva para roupas de pet e quatro secadoras cadastradas permanentemente.
 2. Cada máquina tem uma URL fixa, como `/acompanhar/lavadora-01`.
 3. O QR Code impresso e a etiqueta NFC usam essa mesma URL em todos os ciclos.
 4. O funcionário inicia e atualiza o ciclo da máquina no painel autenticado.
@@ -16,6 +16,7 @@ Rotas principais:
 - `/` — página institucional;
 - `/scan` — leitura do QR Code ou da etiqueta NFC da máquina;
 - `/acompanhar/lavadora-01` até `/acompanhar/lavadora-04` — lavadoras;
+- `/acompanhar/lavadora-pet-01` — lavadora exclusiva para roupas de pet;
 - `/acompanhar/secadora-01` até `/acompanhar/secadora-04` — secadoras;
 - `/admin` — painel autenticado do funcionário;
 

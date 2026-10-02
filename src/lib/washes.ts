@@ -11,11 +11,14 @@ export const WASH_STATUSES = [
 
 export type WashStatus = (typeof WASH_STATUSES)[number];
 
+export const PET_MACHINE_ID = "lavadora-pet-01" as const;
+
 export const MACHINE_IDS = [
   "lavadora-01",
   "lavadora-02",
   "lavadora-03",
   "lavadora-04",
+  PET_MACHINE_ID,
   "secadora-01",
   "secadora-02",
   "secadora-03",
@@ -24,7 +27,8 @@ export const MACHINE_IDS = [
 
 export type LaundryMachineId = (typeof MACHINE_IDS)[number];
 export type LaundryMachineKind = "washer" | "dryer";
-export type WashServiceType = "standard" | "delicate" | "heavy" | "drying";
+export const WASH_SERVICE_TYPES = ["standard", "delicate", "heavy", "drying", "pet"] as const;
+export type WashServiceType = (typeof WASH_SERVICE_TYPES)[number];
 
 export type WashHistoryEntry = {
   id: string;
@@ -63,12 +67,18 @@ export type WashCreateInput = {
 };
 
 export const LAUNDRY_MACHINES: Array<Omit<LaundryMachine, "currentWash">> = MACHINE_IDS.map(
-  (id, index) => ({
-    id,
-    label: `${id.startsWith("lavadora") ? "Lavadora" : "Secadora"} ${id.slice(-2)}`,
-    kind: id.startsWith("lavadora") ? "washer" : "dryer",
-    position: (index % 4) + 1,
-  }),
+  (id) => {
+    if (id === PET_MACHINE_ID) {
+      return { id, label: "Lavadora Pet", kind: "washer", position: 5 };
+    }
+
+    return {
+      id,
+      label: `${id.startsWith("lavadora") ? "Lavadora" : "Secadora"} ${id.slice(-2)}`,
+      kind: id.startsWith("lavadora") ? "washer" : "dryer",
+      position: Number(id.slice(-2)),
+    };
+  },
 );
 
 export const STATUS_LABEL: Record<WashStatus, string> = {
@@ -109,6 +119,7 @@ export const SERVICE_LABEL: Record<WashServiceType, string> = {
   delicate: "Roupas delicadas",
   heavy: "Lavagem intensa",
   drying: "Secagem",
+  pet: "Lavagem de roupas pet",
 };
 
 export const WASHER_CONTROL_STATUSES: WashStatus[] = ["washing", "rinsing", "spinning", "ready"];
@@ -121,6 +132,18 @@ export function isWashStatus(value: unknown): value is WashStatus {
 
 export function isLaundryMachineId(value: unknown): value is LaundryMachineId {
   return typeof value === "string" && MACHINE_IDS.includes(value as LaundryMachineId);
+}
+
+export function isPetMachineId(value: unknown): value is typeof PET_MACHINE_ID {
+  return value === PET_MACHINE_ID;
+}
+
+export function serviceTypesForMachine(
+  machineId: LaundryMachineId,
+  kind: LaundryMachineKind,
+): WashServiceType[] {
+  if (isPetMachineId(machineId)) return ["pet"];
+  return kind === "dryer" ? ["drying"] : ["standard", "delicate", "heavy"];
 }
 
 export function stagesForMachine(
